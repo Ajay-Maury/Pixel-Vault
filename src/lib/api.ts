@@ -23,6 +23,8 @@ export interface ImageRecord {
   keywords: string[];
   tags?: string[];
   uploadedAt?: string;
+  isPrivate?: boolean;
+  userId?: string;
 }
 
 export interface SearchResponse {
@@ -90,6 +92,7 @@ export async function saveImage(data: {
   width: number;
   imageUrl: string;
   size: number;
+  isPrivate?: boolean;
 }): Promise<any> {
   const token = getToken();
   const res = await fetch(`${BASE_URL}/image/save`, {

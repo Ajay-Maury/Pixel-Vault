@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Grid3X3, LayoutGrid, X, Download, Copy, Eye, ImageOff, Loader2 } from "lucide-react";
+import {
+  Search, Grid3X3, LayoutGrid, X, Download, Copy, Eye,
+  ImageOff, Loader2, Globe, Lock, Images
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { searchImages, ImageRecord } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 import { toast } from "sonner";
@@ -10,30 +14,16 @@ import ImageDetailModal from "@/components/ImageDetailModal";
 
 const LIMIT = 12;
 
-export default function Gallery() {
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+function useImageFetch(query: string, page: number, authed: boolean) {
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [gridMode, setGridMode] = useState<"masonry" | "grid">("masonry");
-  const [selectedImage, setSelectedImage] = useState<ImageRecord | null>(null);
-  const authed = isAuthenticated();
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedQuery(query);
-      setPage(0);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [query]);
 
   const fetchImages = useCallback(async () => {
     if (!authed) return;
     setLoading(true);
     try {
-      const result = await searchImages(debouncedQuery, LIMIT, page * LIMIT);
+      const result = await searchImages(query, LIMIT, page * LIMIT);
       setImages(result.data || []);
       setTotalCount(result.totalCount || 0);
     } catch {
@@ -41,13 +31,264 @@ export default function Gallery() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedQuery, page, authed]);
+  }, [query, page, authed]);
+
+  useEffect(() => { fetchImages(); }, [fetchImages]);
+
+  return { images, totalCount, loading };
+}
+
+function Pagination({ page, totalPages, setPage }: {
+  page: number;
+  totalPages: number;
+  setPage: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-2 mt-10">
+      <Button
+        variant="outline" size="sm"
+        onClick={() => setPage(Math.max(0, page - 1))}
+        disabled={page === 0}
+        className="border-border text-foreground hover:bg-muted"
+      >Previous</Button>
+      <div className="flex items-center gap-1">
+        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+          const pageNum = totalPages <= 7 ? i : Math.max(0, Math.min(page - 3, totalPages - 7)) + i;
+          return (
+            <button
+              key={pageNum}
+              onClick={() => setPage(pageNum)}
+              className={`w-8 h-8 rounded-md text-sm font-medium transition-all ${
+                page === pageNum
+                  ? "bg-gradient-gold text-primary-foreground shadow-glow"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >{pageNum + 1}</button>
+          );
+        })}
+      </div>
+      <Button
+        variant="outline" size="sm"
+        onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+        disabled={page >= totalPages - 1}
+        className="border-border text-foreground hover:bg-muted"
+      >Next</Button>
+    </div>
+  );
+}
+
+function ImageGrid({
+  images,
+  loading,
+  gridMode,
+  query,
+  onSelect,
+  emptyMessage,
+  showPrivacyBadge,
+}: {
+  images: ImageRecord[];
+  loading: boolean;
+  gridMode: "masonry" | "grid";
+  query: string;
+  onSelect: (img: ImageRecord) => void;
+  emptyMessage: string;
+  showPrivacyBadge?: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  if (images.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <ImageOff className="w-12 h-12 text-muted-foreground mb-4" />
+        <p className="text-foreground font-medium text-lg mb-1">No images found</p>
+        <p className="text-muted-foreground text-sm">
+          {query ? `No results for "${query}"` : emptyMessage}
+        </p>
+        {!query && (
+          <Link to="/upload" className="mt-4">
+            <Button className="bg-gradient-gold text-primary-foreground shadow-glow hover:opacity-90 font-semibold">
+              Upload Images
+            </Button>
+          </Link>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div
+      className={
+        gridMode === "masonry"
+          ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4"
+          : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+      }
+    >
+      {images.map((img, i) => (
+        <ImageCard
+          key={img._id}
+          image={img}
+          masonry={gridMode === "masonry"}
+          index={i}
+          onClick={() => onSelect(img)}
+          showPrivacyBadge={showPrivacyBadge}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Public Tab ────────────────────────────────────────────────────────────────
+function PublicGallery({
+  gridMode,
+  onSelect,
+}: {
+  gridMode: "masonry" | "grid";
+  onSelect: (img: ImageRecord) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const authed = isAuthenticated();
 
   useEffect(() => {
-    fetchImages();
-  }, [fetchImages]);
+    const t = setTimeout(() => { setDebouncedQuery(query); setPage(0); }, 400);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed);
+  // Filter to public images only
+  const images = allImages.filter((img) => !img.isPrivate);
+  const totalPages = Math.ceil(totalCount / LIMIT);
+
+  return (
+    <div className="space-y-6">
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search public images..."
+          className="pl-10 pr-10 h-12 bg-card border-border focus:border-primary text-foreground placeholder:text-muted-foreground text-base"
+        />
+        {query && (
+          <button onClick={() => setQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      <ImageGrid
+        images={images}
+        loading={loading}
+        gridMode={gridMode}
+        query={query}
+        onSelect={onSelect}
+        emptyMessage="No public images yet — be the first to share one!"
+      />
+      <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+    </div>
+  );
+}
+
+// ─── My Library Tab ────────────────────────────────────────────────────────────
+function MyLibrary({
+  gridMode,
+  onSelect,
+}: {
+  gridMode: "masonry" | "grid";
+  onSelect: (img: ImageRecord) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [privacyTab, setPrivacyTab] = useState<"all" | "public" | "private">("all");
+  const authed = isAuthenticated();
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedQuery(query); setPage(0); }, 400);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed);
+
+  const images = allImages.filter((img) => {
+    if (privacyTab === "public") return !img.isPrivate;
+    if (privacyTab === "private") return img.isPrivate !== false;
+    return true;
+  });
+
+  const publicCount = allImages.filter((img) => !img.isPrivate).length;
+  const privateCount = allImages.filter((img) => img.isPrivate !== false).length;
 
   const totalPages = Math.ceil(totalCount / LIMIT);
+
+  return (
+    <div className="space-y-6">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search your images..."
+          className="pl-10 pr-10 h-12 bg-card border-border focus:border-primary text-foreground placeholder:text-muted-foreground text-base"
+        />
+        {query && (
+          <button onClick={() => setQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Privacy sub-tabs */}
+      <div className="flex gap-2">
+        {(["all", "public", "private"] as const).map((tab) => {
+          const icons = { all: <Images className="w-3.5 h-3.5" />, public: <Globe className="w-3.5 h-3.5" />, private: <Lock className="w-3.5 h-3.5" /> };
+          const counts = { all: allImages.length, public: publicCount, private: privateCount };
+          const labels = { all: "All", public: "Public", private: "Private" };
+          return (
+            <button
+              key={tab}
+              onClick={() => setPrivacyTab(tab)}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                privacyTab === tab
+                  ? "bg-gradient-gold text-primary-foreground border-transparent shadow-glow"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+              }`}
+            >
+              {icons[tab]}
+              {labels[tab]}
+              <span className={`text-xs ml-0.5 ${privacyTab === tab ? "opacity-80" : "opacity-60"}`}>
+                ({counts[tab]})
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <ImageGrid
+        images={images}
+        loading={loading}
+        gridMode={gridMode}
+        query={query}
+        onSelect={onSelect}
+        emptyMessage="Upload your first image to get started"
+        showPrivacyBadge
+      />
+      <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+    </div>
+  );
+}
+
+// ─── Main Gallery ──────────────────────────────────────────────────────────────
+export default function Gallery() {
+  const [gridMode, setGridMode] = useState<"masonry" | "grid">("masonry");
+  const [selectedImage, setSelectedImage] = useState<ImageRecord | null>(null);
+  const authed = isAuthenticated();
 
   if (!authed) {
     return (
@@ -80,10 +321,8 @@ export default function Gallery() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Image Gallery</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {totalCount > 0 ? `${totalCount} image${totalCount !== 1 ? "s" : ""} in your library` : "Your image library"}
-          </p>
+          <h1 className="font-display text-3xl font-bold text-foreground">Gallery</h1>
+          <p className="text-muted-foreground text-sm mt-1">Browse public images or manage your library</p>
         </div>
         {/* View toggle */}
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
@@ -102,106 +341,33 @@ export default function Gallery() {
         </div>
       </div>
 
-      {/* Search bar */}
-      <div className="relative mb-8">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by title, description or keywords..."
-          className="pl-10 pr-10 h-12 bg-card border-border focus:border-primary text-foreground placeholder:text-muted-foreground text-base"
-        />
-        {query && (
-          <button
-            onClick={() => setQuery("")}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+      {/* Tabs */}
+      <Tabs defaultValue="public" className="w-full">
+        <TabsList className="mb-6 bg-muted border border-border h-auto p-1 gap-1">
+          <TabsTrigger
+            value="public"
+            className="flex items-center gap-2 px-5 py-2.5 data-[state=active]:bg-gradient-gold data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow rounded-md text-muted-foreground font-medium transition-all"
           >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+            <Globe className="w-4 h-4" />
+            Public
+          </TabsTrigger>
+          <TabsTrigger
+            value="my-library"
+            className="flex items-center gap-2 px-5 py-2.5 data-[state=active]:bg-gradient-gold data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow rounded-md text-muted-foreground font-medium transition-all"
+          >
+            <Images className="w-4 h-4" />
+            My Library
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      ) : images.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <ImageOff className="w-12 h-12 text-muted-foreground mb-4" />
-          <p className="text-foreground font-medium text-lg mb-1">No images found</p>
-          <p className="text-muted-foreground text-sm">
-            {query ? `No results for "${query}"` : "Upload your first image to get started"}
-          </p>
-          {!query && (
-            <Link to="/upload" className="mt-4">
-              <Button className="bg-gradient-gold text-primary-foreground shadow-glow hover:opacity-90 font-semibold">
-                Upload Images
-              </Button>
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div
-          className={
-            gridMode === "masonry"
-              ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4"
-              : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
-          }
-        >
-          {images.map((img, i) => (
-            <ImageCard
-              key={img._id}
-              image={img}
-              masonry={gridMode === "masonry"}
-              index={i}
-              onClick={() => setSelectedImage(img)}
-            />
-          ))}
-        </div>
-      )}
+        <TabsContent value="public">
+          <PublicGallery gridMode={gridMode} onSelect={setSelectedImage} />
+        </TabsContent>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-10">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="border-border text-foreground hover:bg-muted"
-          >
-            Previous
-          </Button>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              const pageNum = totalPages <= 7 ? i : Math.max(0, Math.min(page - 3, totalPages - 7)) + i;
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
-                  className={`w-8 h-8 rounded-md text-sm font-medium transition-all ${
-                    page === pageNum
-                      ? "bg-gradient-gold text-primary-foreground shadow-glow"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {pageNum + 1}
-                </button>
-              );
-            })}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
-            className="border-border text-foreground hover:bg-muted"
-          >
-            Next
-          </Button>
-        </div>
-      )}
+        <TabsContent value="my-library">
+          <MyLibrary gridMode={gridMode} onSelect={setSelectedImage} />
+        </TabsContent>
+      </Tabs>
 
       {/* Modal */}
       {selectedImage && (
@@ -211,11 +377,12 @@ export default function Gallery() {
   );
 }
 
-function ImageCard({ image, masonry, index, onClick }: {
+function ImageCard({ image, masonry, index, onClick, showPrivacyBadge }: {
   image: ImageRecord;
   masonry: boolean;
   index: number;
   onClick: () => void;
+  showPrivacyBadge?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -242,6 +409,20 @@ function ImageCard({ image, masonry, index, onClick }: {
           onError={() => setError(true)}
           loading="lazy"
         />
+      )}
+
+      {/* Privacy badge */}
+      {showPrivacyBadge && loaded && (
+        <div className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium backdrop-blur-sm ${
+          image.isPrivate !== false
+            ? "bg-card/80 text-muted-foreground border border-border"
+            : "bg-primary/20 text-primary border border-primary/30"
+        }`}>
+          {image.isPrivate !== false
+            ? <><Lock className="w-2.5 h-2.5" /> Private</>
+            : <><Globe className="w-2.5 h-2.5" /> Public</>
+          }
+        </div>
       )}
 
       {/* Overlay */}
