@@ -8,6 +8,7 @@ import Gallery from "./pages/Gallery";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import UploadPage from "./pages/Upload";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
                     <Routes>
                       <Route path="/" element={<Gallery />} />
                       <Route path="/upload" element={<UploadPage />} />
+                      <Route path="/profile" element={<Profile />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>

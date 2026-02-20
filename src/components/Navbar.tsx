@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Camera, Upload, LogOut, LogIn, UserPlus, Search } from "lucide-react";
+import { Camera, Upload, LogOut, LogIn, UserPlus, Search, UserCircle } from "lucide-react";
 import { isAuthenticated, removeToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -60,6 +60,16 @@ export default function Navbar() {
                 <Link to="/upload" className="md:hidden">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Upload className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link to="/profile">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground gap-2"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    <span className="hidden sm:inline">Account</span>
                   </Button>
                 </Link>
                 <Button
