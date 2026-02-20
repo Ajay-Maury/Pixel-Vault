@@ -12,7 +12,6 @@ import { toast } from "sonner";
 import { useNavigate, Link } from "react-router-dom";
 import { z } from "zod";
 
-// Decode JWT payload without a library
 function decodeJwt(token: string): Record<string, any> | null {
   try {
     const payload = token.split(".")[1];
@@ -23,13 +22,9 @@ function decodeJwt(token: string): Record<string, any> | null {
   }
 }
 
-// Validation schema for password change
 const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z
-    .string()
-    .min(6, "New password must be at least 6 characters")
-    .max(100, "Password too long"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters").max(100, "Password too long"),
   confirmPassword: z.string().min(1, "Please confirm your new password"),
 }).refine((d) => d.newPassword === d.confirmPassword, {
   message: "Passwords do not match",
@@ -44,7 +39,6 @@ export default function Profile() {
   const [uploadCount, setUploadCount] = useState<number | null>(null);
   const [loadingCount, setLoadingCount] = useState(true);
 
-  // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -54,16 +48,14 @@ export default function Profile() {
   const [changingPw, setChangingPw] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Stored email — from localStorage (saved at login time) or JWT
   const storedEmail = localStorage.getItem("userEmail") || "";
 
   useEffect(() => {
     if (!token) { navigate("/login"); return; }
-    searchImages("", 1, 0).then((res) => {
-      setUploadCount(res.totalCount ?? 0);
-    }).catch(() => {
-      setUploadCount(0);
-    }).finally(() => setLoadingCount(false));
+    searchImages("", 1, 0)
+      .then((res) => setUploadCount(res.totalCount ?? 0))
+      .catch(() => setUploadCount(0))
+      .finally(() => setLoadingCount(false));
   }, [token, navigate]);
 
   function handleLogout() {
@@ -77,7 +69,6 @@ export default function Profile() {
     e.preventDefault();
     setFieldErrors({});
 
-    // Validate
     const result = passwordChangeSchema.safeParse({ currentPassword, newPassword, confirmPassword });
     if (!result.success) {
       const errors: Record<string, string> = {};
@@ -100,18 +91,13 @@ export default function Profile() {
 
     setChangingPw(true);
     try {
-      // Step 1: Verify current password via login
       const verifyRes = await login(storedEmail, currentPassword);
       if (!verifyRes.token) {
         setFieldErrors({ currentPassword: "Current password is incorrect" });
         return;
       }
-
-      // Step 2: The backend has no PATCH /user/change-password endpoint.
-      // We re-register with the new password would fail (email in use).
-      // Best we can do is confirm verification succeeded and inform user.
       toast.info(
-        "Password change confirmed locally. The backend doesn't yet expose a change-password endpoint — contact the API owner to add PUT /user/change-password.",
+        "Identity verified. The backend doesn't yet expose a change-password endpoint — contact the API owner to add PUT /user/change-password.",
         { duration: 6000 }
       );
       setCurrentPassword("");
@@ -140,29 +126,18 @@ export default function Profile() {
       <div className="space-y-6">
         {/* Profile card */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-card">
-          {/* Gold accent strip */}
           <div className="h-1.5 bg-gradient-gold" />
           <div className="p-6">
             <div className="flex items-start gap-4">
-              {/* Avatar */}
               <div className="w-16 h-16 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow flex-shrink-0">
                 <User className="w-8 h-8 text-primary-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="font-display text-xl font-bold text-foreground truncate">
-                  {storedEmail || "Unknown user"}
+                  {storedEmail || payload?.userId || "PixelVault User"}
                 </h2>
                 <p className="text-muted-foreground text-sm mt-0.5">PixelVault member</p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="text-muted-foreground hover:text-destructive gap-2 flex-shrink-0"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
             </div>
 
             {/* Stats row */}
@@ -183,11 +158,9 @@ export default function Profile() {
                 icon={<Calendar className="w-4 h-4" />}
                 label="Session expires"
                 value={
-                  isExpired
-                    ? "Expired"
-                    : tokenExp
-                    ? tokenExp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                    : "—"
+                  isExpired ? "Expired"
+                  : tokenExp ? tokenExp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : "—"
                 }
                 warn={isExpired}
               />
@@ -195,31 +168,45 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Token info card */}
-        {payload && (
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-card">
-            <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-foreground">Session Info</h3>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label="User ID" value={payload.userId || "—"} mono />
-              <InfoRow
-                icon={<Calendar className="w-3.5 h-3.5" />}
-                label="Expires"
-                value={tokenExp ? tokenExp.toLocaleString() : "—"}
-                warn={isExpired}
-              />
-            </div>
-            {isExpired && (
-              <div className="mt-4 flex items-start gap-2 bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm text-destructive">
-                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                Your session has expired. Please{" "}
-                <button onClick={handleLogout} className="underline font-medium ml-1">log in again</button>.
-              </div>
-            )}
+        {/* Session Info card — always visible */}
+        <div className="bg-card border border-border rounded-2xl p-6 shadow-card">
+          <div className="flex items-center gap-2 mb-4">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Session Info</h3>
           </div>
-        )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <InfoRow
+              icon={<Hash className="w-3.5 h-3.5" />}
+              label="User ID"
+              value={payload?.userId ?? "Not available"}
+              mono
+            />
+            <InfoRow
+              icon={<Calendar className="w-3.5 h-3.5" />}
+              label="Session Expires"
+              value={tokenExp ? tokenExp.toLocaleString() : "Not available"}
+              warn={isExpired}
+            />
+            <InfoRow
+              icon={<Mail className="w-3.5 h-3.5" />}
+              label="Account Email"
+              value={storedEmail || "Not available"}
+            />
+            <InfoRow
+              icon={<ShieldCheck className="w-3.5 h-3.5" />}
+              label="Status"
+              value={isExpired ? "Session expired" : "Active"}
+              warn={isExpired}
+            />
+          </div>
+          {isExpired && (
+            <div className="mt-4 flex items-start gap-2 bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm text-destructive">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              Your session has expired. Please{" "}
+              <button onClick={handleLogout} className="underline font-medium ml-1">log in again</button>.
+            </div>
+          )}
+        </div>
 
         {/* Change password card */}
         <div className="bg-card border border-border rounded-2xl p-6 shadow-card">
@@ -232,21 +219,15 @@ export default function Profile() {
           </p>
 
           <form onSubmit={handlePasswordChange} className="space-y-4">
-            {/* Current password */}
             <div className="space-y-1.5">
-              <Label htmlFor="currentPassword" className="text-foreground font-medium text-sm">
-                Current Password
-              </Label>
+              <Label htmlFor="currentPassword" className="text-foreground font-medium text-sm">Current Password</Label>
               <div className="relative">
                 <Input
                   id="currentPassword"
                   type={showCurrent ? "text" : "password"}
                   placeholder="Enter your current password"
                   value={currentPassword}
-                  onChange={(e) => {
-                    setCurrentPassword(e.target.value.slice(0, 100));
-                    setFieldErrors((p) => ({ ...p, currentPassword: "" }));
-                  }}
+                  onChange={(e) => { setCurrentPassword(e.target.value.slice(0, 100)); setFieldErrors((p) => ({ ...p, currentPassword: "" })); }}
                   className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground pr-10"
                   autoComplete="current-password"
                   maxLength={100}
@@ -260,30 +241,22 @@ export default function Profile() {
               )}
             </div>
 
-            {/* New password */}
             <div className="space-y-1.5">
-              <Label htmlFor="newPassword" className="text-foreground font-medium text-sm">
-                New Password
-              </Label>
+              <Label htmlFor="newPassword" className="text-foreground font-medium text-sm">New Password</Label>
               <div className="relative">
                 <Input
                   id="newPassword"
                   type={showNew ? "text" : "password"}
                   placeholder="Min. 6 characters"
                   value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value.slice(0, 100));
-                    setFieldErrors((p) => ({ ...p, newPassword: "" }));
-                  }}
+                  onChange={(e) => { setNewPassword(e.target.value.slice(0, 100)); setFieldErrors((p) => ({ ...p, newPassword: "" })); }}
                   className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground pr-10"
                   autoComplete="new-password"
                   maxLength={100}
                 />
                 <ToggleVisible show={showNew} toggle={() => setShowNew((v) => !v)} />
               </div>
-              {newPassword.length > 0 && (
-                <PasswordStrength password={newPassword} />
-              )}
+              {newPassword.length > 0 && <PasswordStrength password={newPassword} />}
               {fieldErrors.newPassword && (
                 <p className="text-destructive text-xs flex items-center gap-1 mt-1">
                   <AlertCircle className="w-3 h-3" />{fieldErrors.newPassword}
@@ -291,21 +264,15 @@ export default function Profile() {
               )}
             </div>
 
-            {/* Confirm password */}
             <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword" className="text-foreground font-medium text-sm">
-                Confirm New Password
-              </Label>
+              <Label htmlFor="confirmPassword" className="text-foreground font-medium text-sm">Confirm New Password</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
                   type={showConfirm ? "text" : "password"}
                   placeholder="Repeat new password"
                   value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value.slice(0, 100));
-                    setFieldErrors((p) => ({ ...p, confirmPassword: "" }));
-                  }}
+                  onChange={(e) => { setConfirmPassword(e.target.value.slice(0, 100)); setFieldErrors((p) => ({ ...p, confirmPassword: "" })); }}
                   className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground pr-10"
                   autoComplete="new-password"
                   maxLength={100}
@@ -338,22 +305,42 @@ export default function Profile() {
           <Link to="/" className="flex-1">
             <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted gap-2">
               <ImageIcon className="w-4 h-4" />
-              View Gallery
+              Gallery
             </Button>
           </Link>
           <Link to="/upload" className="flex-1">
             <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted gap-2">
               <ImageIcon className="w-4 h-4" />
-              Upload Image
+              Upload
             </Button>
           </Link>
         </div>
+
+        {/* Prominent Logout button */}
+        <div className="bg-card border border-destructive/30 rounded-2xl p-6 shadow-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">Sign out</h3>
+              <p className="text-muted-foreground text-sm">
+                You'll be redirected to the login page and your local session will be cleared.
+              </p>
+            </div>
+            <Button
+              onClick={handleLogout}
+              variant="destructive"
+              className="gap-2 flex-shrink-0 font-semibold"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </div>
+        </div>
+
       </div>
     </div>
   );
 }
 
-// Sub-components
 function StatCard({ icon, label, value, subValue, loading, warn }: {
   icon: React.ReactNode;
   label: string;
@@ -365,8 +352,7 @@ function StatCard({ icon, label, value, subValue, loading, warn }: {
   return (
     <div className="bg-muted rounded-xl p-4 border border-border">
       <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-2">
-        {icon}
-        {label}
+        {icon}{label}
       </div>
       {loading ? (
         <div className="h-5 w-16 bg-border rounded animate-pulse" />
@@ -388,7 +374,7 @@ function InfoRow({ icon, label, value, mono, warn }: {
   warn?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="bg-muted rounded-lg p-3 border border-border flex flex-col gap-1">
       <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
         {icon}{label}
       </div>
@@ -418,8 +404,8 @@ function PasswordStrength({ password }: { password: string }) {
   const hasSpecial = /[^A-Za-z0-9]/.test(password);
   const score = [password.length >= 8, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
   const levels = ["", "Weak", "Fair", "Good", "Strong"];
-  const colors = ["", "bg-destructive", "bg-yellow-500", "bg-blue-500", "bg-green-500"];
-  const textColors = ["", "text-destructive", "text-yellow-500", "text-blue-500", "text-green-500"];
+  const barColors = ["", "bg-destructive", "bg-yellow-500", "bg-blue-500", "bg-primary"];
+  const textColors = ["", "text-destructive", "text-yellow-500", "text-blue-500", "text-primary"];
 
   return (
     <div className="space-y-1.5">
@@ -427,7 +413,7 @@ function PasswordStrength({ password }: { password: string }) {
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? colors[score] : "bg-border"}`}
+            className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? barColors[score] : "bg-border"}`}
           />
         ))}
       </div>
