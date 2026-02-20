@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  User, Mail, Image as ImageIcon, Calendar, KeyRound,
+  User, Mail, Image as ImageIcon, KeyRound,
   Eye, EyeOff, Loader2, LogOut, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -110,8 +110,6 @@ export default function Profile() {
     }
   }
 
-  const tokenExp = payload?.exp ? new Date(payload.exp * 1000) : null;
-  const isExpired = tokenExp ? tokenExp < new Date() : false;
 
   if (!token) return null;
 
@@ -134,7 +132,7 @@ export default function Profile() {
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="font-display text-xl font-bold text-foreground truncate">
-                  {storedEmail || payload?.userId || "PixelVault User"}
+                  {storedEmail ? storedEmail.split("@")[0] : "PixelVault User"}
                 </h2>
                 <p className="text-muted-foreground text-sm mt-0.5">PixelVault member</p>
               </div>
@@ -153,16 +151,6 @@ export default function Profile() {
                 label="Email"
                 value={storedEmail ? storedEmail.split("@")[0] : "—"}
                 subValue={storedEmail ? "@" + storedEmail.split("@")[1] : undefined}
-              />
-              <StatCard
-                icon={<Calendar className="w-4 h-4" />}
-                label="Session expires"
-                value={
-                  isExpired ? "Expired"
-                  : tokenExp ? tokenExp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                  : "—"
-                }
-                warn={isExpired}
               />
             </div>
           </div>
