@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef } from "react";
-import { Upload, X, ImageIcon, Loader2, CheckCircle, Tag, FileText, Type } from "lucide-react";
+import { Upload, X, ImageIcon, Loader2, CheckCircle, Tag, FileText, Type, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { uploadToCloudinary, saveImage } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ export default function UploadPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [keywords, setKeywords] = useState("");
+  const [isPrivate, setIsPrivate] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
   const authed = isAuthenticated();
@@ -81,6 +83,7 @@ export default function UploadPage() {
         width: uploadedFile.width || cloudRes.width || 0,
         imageUrl,
         size: Math.round(uploadedFile.file.size / 1024),
+        isPrivate,
       });
 
       setSuccess(true);
@@ -99,6 +102,7 @@ export default function UploadPage() {
     setTitle("");
     setDescription("");
     setKeywords("");
+    setIsPrivate(true);
     setSuccess(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -237,6 +241,31 @@ export default function UploadPage() {
               className="bg-muted border-border focus:border-primary text-foreground placeholder:text-muted-foreground h-11"
             />
             <p className="text-muted-foreground text-xs">Separate keywords with commas for better searchability</p>
+          </div>
+
+          {/* Privacy toggle */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              {isPrivate ? (
+                <Lock className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <Globe className="w-4 h-4 text-primary" />
+              )}
+              <div>
+                <p className="text-foreground font-medium text-sm">
+                  {isPrivate ? "Private" : "Public"}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {isPrivate
+                    ? "Only you can see this image"
+                    : "Visible to everyone in the public gallery"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={!isPrivate}
+              onCheckedChange={(checked) => setIsPrivate(!checked)}
+            />
           </div>
         </div>
 
