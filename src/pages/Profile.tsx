@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   User, Mail, Image as ImageIcon, Calendar, KeyRound,
-  Eye, EyeOff, Loader2, LogOut, AlertCircle, ShieldCheck, Hash
+  Eye, EyeOff, Loader2, LogOut, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,46 +166,6 @@ export default function Profile() {
               />
             </div>
           </div>
-        </div>
-
-        {/* Session Info card — always visible */}
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-card">
-          <div className="flex items-center gap-2 mb-4">
-            <ShieldCheck className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-foreground">Session Info</h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <InfoRow
-              icon={<Hash className="w-3.5 h-3.5" />}
-              label="User ID"
-              value={payload?.userId ?? "Not available"}
-              mono
-            />
-            <InfoRow
-              icon={<Calendar className="w-3.5 h-3.5" />}
-              label="Session Expires"
-              value={tokenExp ? tokenExp.toLocaleString() : "Not available"}
-              warn={isExpired}
-            />
-            <InfoRow
-              icon={<Mail className="w-3.5 h-3.5" />}
-              label="Account Email"
-              value={storedEmail || "Not available"}
-            />
-            <InfoRow
-              icon={<ShieldCheck className="w-3.5 h-3.5" />}
-              label="Status"
-              value={isExpired ? "Session expired" : "Active"}
-              warn={isExpired}
-            />
-          </div>
-          {isExpired && (
-            <div className="mt-4 flex items-start gap-2 bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm text-destructive">
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              Your session has expired. Please{" "}
-              <button onClick={handleLogout} className="underline font-medium ml-1">log in again</button>.
-            </div>
-          )}
         </div>
 
         {/* Change password card */}
