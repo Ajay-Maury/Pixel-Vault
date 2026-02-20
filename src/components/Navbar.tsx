@@ -1,19 +1,11 @@
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Camera, Upload, LogOut, LogIn, UserPlus, Search, UserCircle } from "lucide-react";
-import { isAuthenticated, removeToken } from "@/lib/auth";
+import { Link, useLocation } from "react-router-dom";
+import { Camera, Upload, LogIn, UserPlus, Search, UserCircle } from "lucide-react";
+import { isAuthenticated } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 
 export default function Navbar() {
-  const navigate = useNavigate();
   const location = useLocation();
   const authed = isAuthenticated();
-
-  function handleLogout() {
-    removeToken();
-    toast.success("Logged out successfully");
-    navigate("/login");
-  }
 
   const isActive = (path: string) =>
     location.pathname === path
@@ -72,15 +64,6 @@ export default function Navbar() {
                     <span className="hidden sm:inline">Account</span>
                   </Button>
                 </Link>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="text-muted-foreground hover:text-destructive gap-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
               </>
             ) : (
               <>
