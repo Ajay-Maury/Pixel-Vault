@@ -1,16 +1,35 @@
-const BASE_URL = "https://pixel-vault-backend-tqww.onrender.com/api";
+import axios, { AxiosInstance } from "axios";
+
+let BASE_URL = (import.meta.env.VITE_BASE_URL as string) || "";
+
+if (!BASE_URL) {
+  throw new Error("VITE_BASE_URL is not defined");
+}
+
+// Remove surrounding quotes and any trailing semicolons that may come from a
+// poorly formatted .env (e.g. `VITE_BASE_URL="https://...";`). Also trim.
+BASE_URL = BASE_URL.replace(/^['"]+|['";]+$/g, "").trim();
+
+if (BASE_URL.endsWith("/")) {
+  BASE_URL = BASE_URL.slice(0, BASE_URL.length - 1);
+}
 
 function getToken(): string | null {
   return localStorage.getItem("token");
 }
 
-function authHeaders(): HeadersInit {
+const api: AxiosInstance = axios.create({
+  baseURL: BASE_URL,
+});
+
+api.interceptors.request.use((config) => {
   const token = getToken();
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+  if (token) {
+    config.headers = config.headers || {};
+    (config.headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export interface ImageRecord {
   id: string;
@@ -33,21 +52,13 @@ export interface SearchResponse {
 
 // Auth
 export async function register(email: string, password: string) {
-  const res = await fetch(`${BASE_URL}/user/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  return res.json();
+  const res = await api.post(`/user/register`, { email, password }, { headers: { "Content-Type": "application/json" } });
+  return res.data;
 }
 
 export async function login(email: string, password: string) {
-  const res = await fetch(`${BASE_URL}/user/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  return res.json();
+  const res = await api.post(`/user/login`, { email, password }, { headers: { "Content-Type": "application/json" } });
+  return res.data;
 }
 
 // Images
@@ -56,30 +67,23 @@ export async function searchImages(
   limit: number = 12,
   offset: number = 0
 ): Promise<SearchResponse> {
-  const token = getToken();
-  const res = await fetch(`${BASE_URL}/image/search`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ searchText, limit, offset }),
-  });
-  return res.json();
+  const res = await api.post(
+    `/image/search`,
+    { searchText, limit, offset },
+    { headers: { "Content-Type": "application/json" } }
+  );
+  return res.data as SearchResponse;
 }
 
 export async function uploadToCloudinary(file: File): Promise<any> {
-  const token = getToken();
   const formData = new FormData();
   formData.append("image", file);
-  const res = await fetch(`${BASE_URL}/image/minio-upload`, {
-    method: "POST",
+  const res = await api.post(`/image/minio-upload`, formData, {
     headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      // Let the browser set Content-Type with boundary for multipart
     },
-    body: formData,
   });
-  return res.json();
+  return res.data;
 }
 
 export async function saveImage(data: {
@@ -92,14 +96,6 @@ export async function saveImage(data: {
   size: number;
   isPrivate?: boolean;
 }): Promise<any> {
-  const token = getToken();
-  const res = await fetch(`${BASE_URL}/image/save`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const res = await api.post(`/image/save`, data, { headers: { "Content-Type": "application/json" } });
+  return res.data;
 }
