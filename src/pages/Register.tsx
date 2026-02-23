@@ -32,7 +32,7 @@ export default function Register() {
     setLoading(true);
     try {
       const data = await register(email, password);
-      if (data.status) {
+      if (data.user) {
         toast.success("Account created! Please sign in.");
         navigate("/login");
       } else {

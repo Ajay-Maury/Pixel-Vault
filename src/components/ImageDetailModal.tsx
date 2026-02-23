@@ -16,7 +16,7 @@ export default function ImageDetailModal({ image, onClose }: Props) {
   }
 
   function copyUrl() {
-    navigator.clipboard.writeText(image.imageUrl);
+    navigator.clipboard.writeText(image.image_url);
     toast.success("Image URL copied to clipboard!");
   }
 
@@ -32,7 +32,7 @@ export default function ImageDetailModal({ image, onClose }: Props) {
         {/* Image side */}
         <div className="md:w-1/2 bg-muted flex items-center justify-center overflow-hidden min-h-64 md:min-h-0">
           <img
-            src={image.imageUrl}
+            src={image.image_url}
             alt={image.title}
             className="w-full h-full object-contain max-h-[50vh] md:max-h-[80vh]"
           />
@@ -61,11 +61,11 @@ export default function ImageDetailModal({ image, onClose }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <MetaStat icon={<Maximize2 className="w-3.5 h-3.5" />} label="Dimensions" value={`${image.width} × ${image.height}`} />
               <MetaStat icon={<FileImage className="w-3.5 h-3.5" />} label="File size" value={formatFileSize(image.size)} />
-              {image.uploadedAt && (
+              {image.uploaded_at && (
                 <MetaStat
                   icon={<Calendar className="w-3.5 h-3.5" />}
                   label="Uploaded"
-                  value={new Date(image.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  value={new Date(image.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                 />
               )}
             </div>
@@ -91,7 +91,7 @@ export default function ImageDetailModal({ image, onClose }: Props) {
             <div>
               <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">Image URL</div>
               <div className="flex items-center gap-2 bg-muted rounded-lg p-2.5 border border-border">
-                <span className="text-muted-foreground text-xs truncate flex-1">{image.imageUrl}</span>
+                <span className="text-muted-foreground text-xs truncate flex-1">{image.image_url}</span>
                 <button onClick={copyUrl} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
                   <Copy className="w-3.5 h-3.5" />
                 </button>
@@ -109,13 +109,13 @@ export default function ImageDetailModal({ image, onClose }: Props) {
               <Copy className="w-4 h-4" />
               Copy URL
             </Button>
-            <a href={image.imageUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
+            <a href={image.image_url} target="_blank" rel="noopener noreferrer" className="flex-1">
               <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted gap-2">
                 <ExternalLink className="w-4 h-4" />
                 Open
               </Button>
             </a>
-            <a href={image.imageUrl} download>
+            <a href={image.image_url} download>
               <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
                 <Download className="w-4 h-4" />
               </Button>
