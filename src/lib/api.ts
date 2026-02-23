@@ -1,4 +1,4 @@
-const BASE_URL = "https://image-search-and-management-system-lg7h.onrender.com/api";
+const BASE_URL = "https://pixel-vault-backend-tqww.onrender.com/api";
 
 function getToken(): string | null {
   return localStorage.getItem("token");
@@ -13,18 +13,17 @@ function authHeaders(): HeadersInit {
 }
 
 export interface ImageRecord {
-  _id: string;
+  id: string;
   title: string;
   description: string;
-  imageUrl: string;
+  image_url: string;
   width: number;
   height: number;
   size: number;
   keywords: string[];
-  tags?: string[];
-  uploadedAt?: string;
-  isPrivate?: boolean;
-  userId?: string;
+  is_private?: boolean;
+  user_id?: string;
+  uploaded_at?: string;
 }
 
 export interface SearchResponse {
@@ -55,8 +54,7 @@ export async function login(email: string, password: string) {
 export async function searchImages(
   searchText: string = "",
   limit: number = 12,
-  offset: number = 0,
-  sort: Record<string, number> = { uploadedAt: -1 }
+  offset: number = 0
 ): Promise<SearchResponse> {
   const token = getToken();
   const res = await fetch(`${BASE_URL}/image/search`, {
@@ -65,7 +63,7 @@ export async function searchImages(
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ searchText, limit, offset, sort }),
+    body: JSON.stringify({ searchText, limit, offset }),
   });
   return res.json();
 }
@@ -74,7 +72,7 @@ export async function uploadToCloudinary(file: File): Promise<any> {
   const token = getToken();
   const formData = new FormData();
   formData.append("image", file);
-  const res = await fetch(`${BASE_URL}/image/cloudinary-upload`, {
+  const res = await fetch(`${BASE_URL}/image/minio-upload`, {
     method: "POST",
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -130,7 +130,7 @@ function ImageGrid({
     >
       {images.map((img, i) => (
         <ImageCard
-          key={img._id}
+          key={img.id}
           image={img}
           masonry={gridMode === "masonry"}
           index={i}
@@ -162,7 +162,7 @@ function PublicGallery({
 
   const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed);
   // Filter to public images only
-  const images = allImages.filter((img) => !img.isPrivate);
+  const images = allImages.filter((img) => !img.is_private);
   const totalPages = Math.ceil(totalCount / LIMIT);
 
   return (
@@ -216,13 +216,13 @@ function MyLibrary({
   const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed);
 
   const images = allImages.filter((img) => {
-    if (privacyTab === "public") return !img.isPrivate;
-    if (privacyTab === "private") return img.isPrivate !== false;
+    if (privacyTab === "public") return !img.is_private;
+    if (privacyTab === "private") return img.is_private !== false;
     return true;
   });
 
-  const publicCount = allImages.filter((img) => !img.isPrivate).length;
-  const privateCount = allImages.filter((img) => img.isPrivate !== false).length;
+  const publicCount = allImages.filter((img) => !img.is_private).length;
+  const privateCount = allImages.filter((img) => img.is_private !== false).length;
 
   const totalPages = Math.ceil(totalCount / LIMIT);
 
@@ -402,7 +402,7 @@ function ImageCard({ image, masonry, index, onClick, showPrivacyBadge }: {
         </div>
       ) : (
         <img
-          src={image.imageUrl}
+          src={image.image_url}
           alt={image.title}
           className={`w-full object-cover transition-transform duration-500 group-hover:scale-105 ${loaded ? "opacity-100" : "opacity-0 absolute"} ${!masonry ? "h-full" : ""}`}
           onLoad={() => setLoaded(true)}
@@ -414,11 +414,11 @@ function ImageCard({ image, masonry, index, onClick, showPrivacyBadge }: {
       {/* Privacy badge */}
       {showPrivacyBadge && loaded && (
         <div className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium backdrop-blur-sm ${
-          image.isPrivate !== false
+          image.is_private !== false
             ? "bg-card/80 text-muted-foreground border border-border"
             : "bg-primary/20 text-primary border border-primary/30"
         }`}>
-          {image.isPrivate !== false
+          {image.is_private !== false
             ? <><Lock className="w-2.5 h-2.5" /> Private</>
             : <><Globe className="w-2.5 h-2.5" /> Public</>
           }
@@ -436,7 +436,7 @@ function ImageCard({ image, masonry, index, onClick, showPrivacyBadge }: {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigator.clipboard.writeText(image.imageUrl);
+              navigator.clipboard.writeText(image.image_url);
               toast.success("URL copied!");
             }}
             className="p-1.5 rounded-md bg-card/80 hover:bg-card text-foreground transition-colors"
@@ -444,7 +444,7 @@ function ImageCard({ image, masonry, index, onClick, showPrivacyBadge }: {
             <Copy className="w-3 h-3" />
           </button>
           <a
-            href={image.imageUrl}
+            href={image.image_url}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
@@ -453,7 +453,7 @@ function ImageCard({ image, masonry, index, onClick, showPrivacyBadge }: {
             <Eye className="w-3 h-3" />
           </a>
           <a
-            href={image.imageUrl}
+            href={image.image_url}
             download
             onClick={(e) => e.stopPropagation()}
             className="p-1.5 rounded-md bg-card/80 hover:bg-card text-foreground transition-colors"

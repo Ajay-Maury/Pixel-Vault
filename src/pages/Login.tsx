@@ -27,8 +27,10 @@ export default function Login() {
       const data = await login(email, password);
       if (data.token) {
         setToken(data.token);
-        // Store email for profile display (not sensitive data)
-        localStorage.setItem("userEmail", email.toLowerCase().trim());
+        // Store user info from response
+        const userEmail = data.user?.email || email.toLowerCase().trim();
+        localStorage.setItem("userEmail", userEmail);
+        if (data.user?.id) localStorage.setItem("userId", data.user.id);
         toast.success("Welcome back!");
         navigate("/");
       } else {
