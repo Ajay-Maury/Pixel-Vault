@@ -1,73 +1,128 @@
-# Welcome to your Lovable project
 
-## Project info
+# Pixel Vault
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Pixel Vault is a modern web application for managing, showcasing, and sharing digital assets. Built with a focus on performance, scalability, and developer experience, it leverages the latest frontend technologies and best practices.
 
-## How can I edit this code?
 
-There are several ways of editing your application.
+## Table of Contents
 
-**Use Lovable**
+- [Project Overview](#project-overview)
+- [Live Demo](#live-demo)
+- [Tech Stack](#tech-stack)
+- [Features](#features)
+- [Getting Started](#getting-started)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Custom Domain](#custom-domain)
+- [Contributing](#contributing)
+- [License](#license)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
 
-Changes made via Lovable will be committed automatically to this repo.
+## Project Overview
 
-**Use your preferred IDE**
+Pixel Vault enables users to upload, browse, and manage images in a seamless, responsive interface. The project is structured for maintainability and extensibility, making it easy to add new features or integrate with external services.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Features
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **User Authentication**: Secure registration and login with JWT-based session management.
+- **Image Upload**: Drag-and-drop or file picker upload with client-side validation (type, size, preview, metadata extraction).
+- **Gallery**: Responsive, searchable gallery with public and private image filtering, pagination, and two grid modes (masonry/grid).
+- **Image Detail Modal**: View image details, metadata, keywords, and perform actions (copy URL, open, download, edit, delete).
+- **Image Editing**: Owners can edit title, description, keywords, and privacy (public/private) of their images.
+- **Image Deletion**: Owners can delete their images with confirmation.
+- **Profile Page**: View account info, upload stats, and (identity-verified) password change UI.
+- **Password Strength Meter**: Real-time feedback on password strength during registration and password change.
+- **Search**: Full-text search by title or keywords in both public and private libraries.
+- **Privacy Controls**: Mark images as public or private; only public images are visible to all users.
+- **Cloud Storage Integration**: Images are uploaded to and served from Cloudinary.
+- **Responsive UI**: Mobile-friendly, accessible design using shadcn/ui and Tailwind CSS.
+- **Error Handling & Toasts**: User feedback for all actions (success, error, loading states).
+- **404 Not Found Page**: Friendly error page for invalid routes.
+- **Modern Tooling**: Built with Vite, React, TypeScript, and modular component structure.
+- **Extensible Architecture**: Easy to add new features, pages, or integrate with APIs.
 
-Follow these steps:
+
+## Live Demo
+
+Access the live project at: [https://ui-pixel-vault.vercel.app](https://ui-pixel-vault.vercel.app)
+
+## Tech Stack
+
+- [Vite](https://vitejs.dev/) — Lightning-fast build tool
+- [React](https://react.dev/) — Component-based UI library
+- [TypeScript](https://www.typescriptlang.org/) — Static type checking
+- [Tailwind CSS](https://tailwindcss.com/) — Utility-first CSS framework
+- [shadcn/ui](https://ui.shadcn.com/) — Accessible, customizable UI components
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18+ recommended)
+- [npm](https://www.npmjs.com/) or [bun](https://bun.sh/) (for dependency management)
+
+### Installation
+
+Clone the repository and install dependencies:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+git clone https://github.com/Ajay-Maury/Pixel-Vault.git
+cd Pixel-Vault
+npm install # or bun install
 ```
 
-**Edit a file directly in GitHub**
+### Running Locally
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Start the development server:
 
-**Use GitHub Codespaces**
+```sh
+npm run dev # or bun run dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The app will be available at [http://localhost:5173](http://localhost:5173) by default.
 
-## What technologies are used for this project?
+## Development
 
-This project is built with:
+- Source code is located in the `src/` directory.
+- UI components are organized under `src/components/` and `src/components/ui/`.
+- Pages are in `src/pages/`.
+- Utility functions and hooks are in `src/lib/` and `src/hooks/` respectively.
+- Tests are in `src/test/`.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Recommended Workflow
 
-## How can I deploy this project?
+1. Create a feature branch: `git checkout -b feature/your-feature`
+2. Make your changes and commit with clear messages.
+3. Run tests and lint your code before pushing.
+4. Open a pull request for review.
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Deployment
 
-## Can I connect a custom domain to my Lovable project?
+To deploy, use the Lovable platform:
 
-Yes, you can!
+1. Open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID)
+2. Click on **Share → Publish**
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Alternatively, you can deploy to your preferred platform (Vercel, Netlify, etc.) by building the project:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```sh
+npm run build
+# or
+bun run build
+```
+
+## Custom Domain
+
+To connect a custom domain:
+
+1. Go to **Project > Settings > Domains** in Lovable
+2. Click **Connect Domain**
+3. Follow the [custom domain setup guide](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Contributing
+
+Contributions are welcome! Please open issues or pull requests for any improvements or bug fixes. For major changes, discuss them in an issue first.
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
