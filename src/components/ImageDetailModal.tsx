@@ -1,14 +1,35 @@
-import { X, Download, Copy, ExternalLink, Calendar, Maximize2, Tag, FileImage } from "lucide-react";
+import { useState } from "react";
+import { X, Download, Copy, ExternalLink, Calendar, Maximize2, Tag, FileImage, Trash2, Pencil, Loader2, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ImageRecord } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { ImageRecord, deleteImage, updateImage } from "@/lib/api";
+import { getUserId } from "@/lib/auth";
 import { toast } from "sonner";
 
 interface Props {
   image: ImageRecord;
   onClose: () => void;
+  onDeleted?: (id: string) => void;
+  onUpdated?: (image: ImageRecord) => void;
 }
 
-export default function ImageDetailModal({ image, onClose }: Props) {
+export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated }: Props) {
+  const userId = getUserId();
+  const isOwner = userId && image.user_id === userId;
+
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const [title, setTitle] = useState(image.title);
+  const [description, setDescription] = useState(image.description || "");
+  const [keywords, setKeywords] = useState((image.keywords || []).join(", "));
+  const [isPrivate, setIsPrivate] = useState(image.is_private !== false);
+
   function formatFileSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -18,6 +39,50 @@ export default function ImageDetailModal({ image, onClose }: Props) {
   function copyUrl() {
     navigator.clipboard.writeText(image.image_url);
     toast.success("Image URL copied to clipboard!");
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deleteImage(image.id);
+      toast.success("Image deleted");
+      onDeleted?.(image.id);
+      onClose();
+    } catch {
+      toast.error("Failed to delete image");
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateImage(image.id, {
+        title: title.trim(),
+        description: description.trim(),
+        keywords: keywords.trim(),
+        isPrivate,
+      });
+      toast.success("Image updated");
+      onUpdated?.({
+        ...image,
+        title: title.trim(),
+        description: description.trim(),
+        keywords: keywords.trim().split(",").map((k) => k.trim()).filter(Boolean),
+        is_private: isPrivate,
+      });
+      setEditing(false);
+    } catch {
+      toast.error("Failed to update image");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -43,9 +108,49 @@ export default function ImageDetailModal({ image, onClose }: Props) {
           {/* Header */}
           <div className="flex items-start justify-between p-6 border-b border-border">
             <div className="flex-1 pr-3">
-              <h2 className="font-display text-xl font-bold text-foreground leading-tight">{image.title}</h2>
-              {image.description && (
-                <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">{image.description}</p>
+              {editing ? (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-foreground text-xs font-medium">Title</Label>
+                    <Input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="bg-muted border-border focus:border-primary text-foreground h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-foreground text-xs font-medium">Description</Label>
+                    <Textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="bg-muted border-border focus:border-primary text-foreground text-sm resize-none"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-foreground text-xs font-medium">Keywords</Label>
+                    <Input
+                      value={keywords}
+                      onChange={(e) => setKeywords(e.target.value)}
+                      placeholder="comma separated"
+                      className="bg-muted border-border focus:border-primary text-foreground h-9 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      {isPrivate ? <Lock className="w-3.5 h-3.5 text-muted-foreground" /> : <Globe className="w-3.5 h-3.5 text-primary" />}
+                      <span className="text-foreground text-sm">{isPrivate ? "Private" : "Public"}</span>
+                    </div>
+                    <Switch checked={!isPrivate} onCheckedChange={(c) => setIsPrivate(!c)} />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h2 className="font-display text-xl font-bold text-foreground leading-tight">{image.title}</h2>
+                  {image.description && (
+                    <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">{image.description}</p>
+                  )}
+                </>
               )}
             </div>
             <button
@@ -70,8 +175,7 @@ export default function ImageDetailModal({ image, onClose }: Props) {
               )}
             </div>
 
-            {/* Keywords */}
-            {image.keywords && image.keywords.length > 0 && (
+            {!editing && image.keywords && image.keywords.length > 0 && (
               <div>
                 <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
                   <Tag className="w-3 h-3" />
@@ -87,7 +191,6 @@ export default function ImageDetailModal({ image, onClose }: Props) {
               </div>
             )}
 
-            {/* URL */}
             <div>
               <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">Image URL</div>
               <div className="flex items-center gap-2 bg-muted rounded-lg p-2.5 border border-border">
@@ -99,27 +202,61 @@ export default function ImageDetailModal({ image, onClose }: Props) {
             </div>
           </div>
 
+          {/* Delete confirmation */}
+          {confirmDelete && (
+            <div className="px-6 pb-3">
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center justify-between">
+                <span className="text-destructive text-sm font-medium">Delete this image?</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)} className="h-7 text-xs border-border">Cancel</Button>
+                  <Button size="sm" onClick={handleDelete} disabled={deleting} className="h-7 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : "Delete"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
-          <div className="p-6 border-t border-border flex gap-2">
-            <Button
-              onClick={copyUrl}
-              variant="outline"
-              className="flex-1 border-border text-foreground hover:bg-muted gap-2"
-            >
-              <Copy className="w-4 h-4" />
-              Copy URL
-            </Button>
-            <a href={image.image_url} target="_blank" rel="noopener noreferrer" className="flex-1">
-              <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted gap-2">
-                <ExternalLink className="w-4 h-4" />
-                Open
-              </Button>
-            </a>
-            <a href={image.image_url} download>
-              <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
-                <Download className="w-4 h-4" />
-              </Button>
-            </a>
+          <div className="p-6 border-t border-border flex gap-2 flex-wrap">
+            {editing ? (
+              <>
+                <Button onClick={() => setEditing(false)} variant="outline" className="flex-1 border-border text-foreground hover:bg-muted">
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={saving} className="flex-1 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button onClick={copyUrl} variant="outline" className="flex-1 border-border text-foreground hover:bg-muted gap-2">
+                  <Copy className="w-4 h-4" />
+                  Copy URL
+                </Button>
+                <a href={image.image_url} target="_blank" rel="noopener noreferrer" className="flex-1">
+                  <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted gap-2">
+                    <ExternalLink className="w-4 h-4" />
+                    Open
+                  </Button>
+                </a>
+                <a href={image.image_url} download>
+                  <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </a>
+                {isOwner && (
+                  <>
+                    <Button onClick={() => setEditing(true)} variant="outline" className="border-border text-foreground hover:bg-muted gap-2">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button onClick={() => setConfirmDelete(true)} variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10 gap-2">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

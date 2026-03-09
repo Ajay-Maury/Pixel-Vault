@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { searchImages, ImageRecord } from "@/lib/api";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, getUserId } from "@/lib/auth";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import ImageDetailModal from "@/components/ImageDetailModal";
@@ -35,7 +35,7 @@ function useImageFetch(query: string, page: number, authed: boolean) {
 
   useEffect(() => { fetchImages(); }, [fetchImages]);
 
-  return { images, totalCount, loading };
+  return { images, totalCount, loading, refetch: fetchImages };
 }
 
 function Pagination({ page, totalPages, setPage }: {
@@ -161,7 +161,6 @@ function PublicGallery({
   }, [query]);
 
   const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed);
-  // Filter to public images only
   const images = allImages.filter((img) => !img.is_private);
   const totalPages = Math.ceil(totalCount / LIMIT);
 
@@ -207,6 +206,7 @@ function MyLibrary({
   const [page, setPage] = useState(0);
   const [privacyTab, setPrivacyTab] = useState<"all" | "public" | "private">("all");
   const authed = isAuthenticated();
+  const userId = getUserId();
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedQuery(query); setPage(0); }, 400);
@@ -215,20 +215,22 @@ function MyLibrary({
 
   const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed);
 
-  const images = allImages.filter((img) => {
+  // Filter to only show the logged-in user's images
+  const myImages = allImages.filter((img) => img.user_id === userId);
+
+  const images = myImages.filter((img) => {
     if (privacyTab === "public") return !img.is_private;
     if (privacyTab === "private") return img.is_private !== false;
     return true;
   });
 
-  const publicCount = allImages.filter((img) => !img.is_private).length;
-  const privateCount = allImages.filter((img) => img.is_private !== false).length;
+  const publicCount = myImages.filter((img) => !img.is_private).length;
+  const privateCount = myImages.filter((img) => img.is_private !== false).length;
 
   const totalPages = Math.ceil(totalCount / LIMIT);
 
   return (
     <div className="space-y-6">
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         <Input
@@ -244,11 +246,10 @@ function MyLibrary({
         )}
       </div>
 
-      {/* Privacy sub-tabs */}
       <div className="flex gap-2">
         {(["all", "public", "private"] as const).map((tab) => {
           const icons = { all: <Images className="w-3.5 h-3.5" />, public: <Globe className="w-3.5 h-3.5" />, private: <Lock className="w-3.5 h-3.5" /> };
-          const counts = { all: allImages.length, public: publicCount, private: privateCount };
+          const counts = { all: myImages.length, public: publicCount, private: privateCount };
           const labels = { all: "All", public: "Public", private: "Private" };
           return (
             <button
@@ -288,7 +289,18 @@ function MyLibrary({
 export default function Gallery() {
   const [gridMode, setGridMode] = useState<"masonry" | "grid">("masonry");
   const [selectedImage, setSelectedImage] = useState<ImageRecord | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const authed = isAuthenticated();
+
+  function handleDeleted() {
+    setSelectedImage(null);
+    setRefreshKey((k) => k + 1);
+  }
+
+  function handleUpdated(updated: ImageRecord) {
+    setSelectedImage(updated);
+    setRefreshKey((k) => k + 1);
+  }
 
   if (!authed) {
     return (
@@ -318,13 +330,11 @@ export default function Gallery() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Gallery</h1>
           <p className="text-muted-foreground text-sm mt-1">Browse public images or manage your library</p>
         </div>
-        {/* View toggle */}
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           <button
             onClick={() => setGridMode("masonry")}
@@ -341,8 +351,7 @@ export default function Gallery() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="public" className="w-full">
+      <Tabs defaultValue="public" className="w-full" key={refreshKey}>
         <TabsList className="mb-6 bg-muted border border-border h-auto p-1 gap-1">
           <TabsTrigger
             value="public"
@@ -369,9 +378,13 @@ export default function Gallery() {
         </TabsContent>
       </Tabs>
 
-      {/* Modal */}
       {selectedImage && (
-        <ImageDetailModal image={selectedImage} onClose={() => setSelectedImage(null)} />
+        <ImageDetailModal
+          image={selectedImage}
+          onClose={() => setSelectedImage(null)}
+          onDeleted={handleDeleted}
+          onUpdated={handleUpdated}
+        />
       )}
     </div>
   );
@@ -411,7 +424,6 @@ function ImageCard({ image, masonry, index, onClick, showPrivacyBadge }: {
         />
       )}
 
-      {/* Privacy badge */}
       {showPrivacyBadge && loaded && (
         <div className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium backdrop-blur-sm ${
           image.is_private !== false
@@ -425,7 +437,6 @@ function ImageCard({ image, masonry, index, onClick, showPrivacyBadge }: {
         </div>
       )}
 
-      {/* Overlay */}
       <div className="absolute inset-0 image-overlay opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="absolute bottom-0 left-0 right-0 p-3 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
         <p className="text-foreground font-semibold text-sm truncate">{image.title}</p>
