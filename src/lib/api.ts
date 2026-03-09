@@ -1,10 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 
-let BASE_URL = (import.meta.env.VITE_BASE_URL as string) || "";
-
-if (!BASE_URL) {
-  throw new Error("VITE_BASE_URL is not defined");
-}
+let BASE_URL = (import.meta.env.VITE_BASE_URL as string) || "https://pixel-vault-backend-tqww.onrender.com/api";
 
 BASE_URL = BASE_URL.replace(/^['"]+|['";]+$/g, "").trim();
 
