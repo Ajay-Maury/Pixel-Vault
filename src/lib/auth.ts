@@ -13,3 +13,7 @@ export function removeToken() {
 export function isAuthenticated(): boolean {
   return !!getToken();
 }
+
+export function getUserId(): string | null {
+  return localStorage.getItem("userId");
+}
