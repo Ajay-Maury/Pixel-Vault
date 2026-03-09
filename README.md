@@ -1,128 +1,155 @@
 
 # Pixel Vault
 
-Pixel Vault is a modern web application for managing, showcasing, and sharing digital assets. Built with a focus on performance, scalability, and developer experience, it leverages the latest frontend technologies and best practices.
+A modern, dark-themed web application for uploading, managing, and sharing digital images. Built with React, TypeScript, and Tailwind CSS, powered by a REST API backend with Cloudinary storage.
 
-
-## Table of Contents
-
-- [Project Overview](#project-overview)
-- [Live Demo](#live-demo)
-- [Tech Stack](#tech-stack)
-- [Features](#features)
-- [Getting Started](#getting-started)
-- [Development](#development)
-- [Deployment](#deployment)
-- [Custom Domain](#custom-domain)
-- [Contributing](#contributing)
-- [License](#license)
-
-
-## Project Overview
-
-Pixel Vault enables users to upload, browse, and manage images in a seamless, responsive interface. The project is structured for maintainability and extensibility, making it easy to add new features or integrate with external services.
-
-## Features
-
-- **User Authentication**: Secure registration and login with JWT-based session management.
-- **Image Upload**: Drag-and-drop or file picker upload with client-side validation (type, size, preview, metadata extraction).
-- **Gallery**: Responsive, searchable gallery with public and private image filtering, pagination, and two grid modes (masonry/grid).
-- **Image Detail Modal**: View image details, metadata, keywords, and perform actions (copy URL, open, download, edit, delete).
-- **Image Editing**: Owners can edit title, description, keywords, and privacy (public/private) of their images.
-- **Image Deletion**: Owners can delete their images with confirmation.
-- **Profile Page**: View account info, upload stats, and (identity-verified) password change UI.
-- **Password Strength Meter**: Real-time feedback on password strength during registration and password change.
-- **Search**: Full-text search by title or keywords in both public and private libraries.
-- **Privacy Controls**: Mark images as public or private; only public images are visible to all users.
-- **Cloud Storage Integration**: Images are uploaded to and served from Cloudinary.
-- **Responsive UI**: Mobile-friendly, accessible design using shadcn/ui and Tailwind CSS.
-- **Error Handling & Toasts**: User feedback for all actions (success, error, loading states).
-- **404 Not Found Page**: Friendly error page for invalid routes.
-- **Modern Tooling**: Built with Vite, React, TypeScript, and modular component structure.
-- **Extensible Architecture**: Easy to add new features, pages, or integrate with APIs.
-
+![Login Page](public/screenshots/login.png)
 
 ## Live Demo
 
-Access the live project at: [https://ui-pixel-vault.vercel.app](https://ui-pixel-vault.vercel.app)
+🔗 [https://ui-pixel-vault.vercel.app](https://ui-pixel-vault.vercel.app)
+
+## Features
+
+### 🔐 Authentication
+- JWT-based registration and login
+- Password visibility toggle
+- Password strength meter on registration
+- Protected routes with automatic redirect
+
+![Register Page](public/screenshots/register.png)
+
+### 🖼️ Image Upload
+- Drag-and-drop or file picker upload
+- Client-side validation (type, size)
+- Image preview before upload
+- Metadata extraction (dimensions, file size)
+- Title, description, keywords, and privacy (public/private) settings
+- Cloud storage via Cloudinary
+
+### 🎨 Gallery
+- **Public Gallery** — browse all public images shared by users
+- **My Library** — view only your own uploads with privacy filters (All / Public / Private)
+- Two grid modes: masonry and uniform grid
+- Full-text search by title or keywords
+- Pagination with page navigation
+- Privacy badges (🔒 Private / 🌐 Public) on library cards
+
+### 🔍 Image Detail Modal
+- View full image with metadata (dimensions, size, upload date, keywords)
+- Copy image URL to clipboard
+- Open image in new tab
+- Download image
+
+### ✏️ Image Editing (Owner Only)
+- Edit title, description, and keywords inline
+- Toggle privacy between public and private
+- Delete images with confirmation dialog
+
+### 👤 Profile Page
+- View account info and upload statistics
+- Password change UI with identity verification
+
+### 📱 Responsive Design
+- Mobile-friendly layout across all pages
+- Accessible UI components via shadcn/ui
 
 ## Tech Stack
 
-- [Vite](https://vitejs.dev/) — Lightning-fast build tool
-- [React](https://react.dev/) — Component-based UI library
-- [TypeScript](https://www.typescriptlang.org/) — Static type checking
-- [Tailwind CSS](https://tailwindcss.com/) — Utility-first CSS framework
-- [shadcn/ui](https://ui.shadcn.com/) — Accessible, customizable UI components
+| Layer | Technology |
+|-------|-----------|
+| Framework | [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) |
+| Build Tool | [Vite](https://vitejs.dev/) |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) |
+| UI Components | [shadcn/ui](https://ui.shadcn.com/) |
+| Routing | [React Router v6](https://reactrouter.com/) |
+| HTTP Client | [Axios](https://axios-http.com/) |
+| State | [TanStack React Query](https://tanstack.com/query) |
+| Notifications | [Sonner](https://sonner.emilkowal.dev/) |
+| Backend | REST API on [Render](https://render.com/) |
+| Storage | [Cloudinary](https://cloudinary.com/) |
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+ recommended)
-- [npm](https://www.npmjs.com/) or [bun](https://bun.sh/) (for dependency management)
+- [Node.js](https://nodejs.org/) v18+
+- npm or [bun](https://bun.sh/)
 
 ### Installation
-
-Clone the repository and install dependencies:
 
 ```sh
 git clone https://github.com/Ajay-Maury/Pixel-Vault.git
 cd Pixel-Vault
-npm install # or bun install
+npm install
+```
+
+### Environment Variables
+
+Create a `.env` file (optional — the app falls back to the production API):
+
+```env
+VITE_BASE_URL=https://pixel-vault-backend-tqww.onrender.com/api
 ```
 
 ### Running Locally
 
-Start the development server:
-
 ```sh
-npm run dev # or bun run dev
+npm run dev
 ```
 
-The app will be available at [http://localhost:5173](http://localhost:5173) by default.
+Open [http://localhost:5173](http://localhost:5173).
 
-## Development
+## API Endpoints
 
-- Source code is located in the `src/` directory.
-- UI components are organized under `src/components/` and `src/components/ui/`.
-- Pages are in `src/pages/`.
-- Utility functions and hooks are in `src/lib/` and `src/hooks/` respectively.
-- Tests are in `src/test/`.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/user/register` | Register a new user |
+| POST | `/user/login` | Login and receive JWT |
+| POST | `/image/search` | Search images (title/keywords) |
+| POST | `/image/minio-upload` | Upload image file |
+| POST | `/image/save` | Save image metadata |
+| PUT | `/image/:id` | Update image (title, description, keywords, privacy) |
+| DELETE | `/image/:id` | Delete an image |
 
-### Recommended Workflow
+All `/image/*` endpoints require `Authorization: Bearer <token>` header.
 
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Make your changes and commit with clear messages.
-3. Run tests and lint your code before pushing.
-4. Open a pull request for review.
+## Project Structure
 
-## Deployment
-
-To deploy, use the Lovable platform:
-
-1. Open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID)
-2. Click on **Share → Publish**
-
-Alternatively, you can deploy to your preferred platform (Vercel, Netlify, etc.) by building the project:
-
-```sh
-npm run build
-# or
-bun run build
+```
+src/
+├── components/
+│   ├── ui/              # shadcn/ui components
+│   ├── ImageDetailModal.tsx
+│   ├── Navbar.tsx
+│   └── NavLink.tsx
+├── hooks/
+│   ├── use-mobile.tsx
+│   └── use-toast.ts
+├── lib/
+│   ├── api.ts           # Axios client & API functions
+│   ├── auth.ts          # Auth helpers (token, userId)
+│   └── utils.ts
+├── pages/
+│   ├── Gallery.tsx      # Public gallery + My Library
+│   ├── Login.tsx
+│   ├── Register.tsx
+│   ├── Upload.tsx
+│   ├── Profile.tsx
+│   └── NotFound.tsx
+├── App.tsx
+├── main.tsx
+└── index.css
 ```
 
-## Custom Domain
+## Screenshots
 
-To connect a custom domain:
-
-1. Go to **Project > Settings > Domains** in Lovable
-2. Click **Connect Domain**
-3. Follow the [custom domain setup guide](https://docs.lovable.dev/features/custom-domain#custom-domain)
+> To add screenshots, place images in `public/screenshots/` and reference them above, or visit the [live demo](https://ui-pixel-vault.vercel.app).
 
 ## Contributing
 
-Contributions are welcome! Please open issues or pull requests for any improvements or bug fixes. For major changes, discuss them in an issue first.
+Contributions welcome! Open issues or pull requests for improvements. For major changes, discuss in an issue first.
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+MIT — see [LICENSE](LICENSE) for details.
