@@ -81,14 +81,14 @@ export default function UploadPage() {
         keywords: keywords.trim(),
         height: uploadedFile.height || cloudRes.height || 0,
         width: uploadedFile.width || cloudRes.width || 0,
-        imageUrl,
+        imageUrl: cloudRes.secure_url,
         size: Math.round(uploadedFile.file.size / 1024),
         isPrivate,
       });
 
       setSuccess(true);
       toast.success("Image uploaded successfully!");
-      setTimeout(() => navigate("/"), 1500);
+      setTimeout(() => navigate("/?tab=my-library", { replace: true }), 1500);
     } catch (err: any) {
       toast.error(err.message || "Upload failed. Please try again.");
     } finally {

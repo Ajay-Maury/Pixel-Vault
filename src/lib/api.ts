@@ -43,9 +43,29 @@ export interface SearchResponse {
   totalCount: number;
 }
 
+export interface ProfileRecord {
+  id?: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  gender?: string | null;
+}
+
 // Auth
-export async function register(email: string, password: string) {
-  const res = await api.post(`/user/register`, { email, password });
+export async function register(
+  email: string,
+  password: string,
+  firstName: string,
+  lastName: string,
+  gender: string
+) {
+  const res = await api.post(`/user/register`, {
+    email,
+    password,
+    firstName,
+    lastName,
+    gender,
+  });
   return res.data;
 }
 
@@ -54,13 +74,44 @@ export async function login(email: string, password: string) {
   return res.data;
 }
 
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<any> {
+  try {
+    const res = await api.put(`/user/change-password`, { currentPassword, newPassword });
+    return { success: true, message: res.data.message || "Password changed successfully" };
+  } catch (error) {
+    return { success: false, message: "Error changing password" };
+  }
+}
+
+export async function getProfile() {
+  const res = await api.get(`/user/profile`);
+  return res.data;
+}
+
+export async function updateProfile(data: {
+  firstName: string;
+  lastName: string;
+  gender?: string;
+}) {
+  try {
+    const res = await api.put(`/user/profile`, data);
+    return res.data;
+  } catch (error: any) {
+    throw error;
+  }
+}
+
 // Images
 export async function searchImages(
   searchText: string = "",
   limit: number = 12,
-  offset: number = 0
+  offset: number = 0,
+  myLibrary: boolean = false
 ): Promise<SearchResponse> {
-  const res = await api.post(`/image/search`, { searchText, limit, offset });
+  const res = await api.post(`/image/search`, { searchText, limit, offset, myLibrary });
   return res.data as SearchResponse;
 }
 

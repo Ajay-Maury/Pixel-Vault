@@ -10,9 +10,14 @@ import heroImage from "@/assets/auth-hero.jpg";
 
 export default function Register() {
   const navigate = useNavigate();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [gender, setGender] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const passwordStrength = password.length >= 8 ? (
@@ -21,7 +26,7 @@ export default function Register() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !password) {
+    if (!firstName || !lastName || !gender || !email || !password) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -31,7 +36,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const data = await register(email, password);
+      const data = await register(email, password, firstName, lastName, gender);
       if (data.user) {
         toast.success("Account created! Please sign in.");
         navigate("/login");
@@ -98,6 +103,45 @@ export default function Register() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
+              <Label htmlFor="firstName" className="text-foreground font-medium">First Name</Label>
+              <Input
+                id="firstName"
+                type="text"
+                placeholder="First Name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground"
+                autoComplete="given-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName" className="text-foreground font-medium">Last Name</Label>
+              <Input
+                id="lastName"
+                type="text"
+                placeholder="Last Name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground"
+                autoComplete="family-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gender" className="text-foreground font-medium">Gender</Label>
+              <select
+                id="gender"
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="bg-muted border border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground rounded-md w-full px-3"
+                required
+              >
+                <option value="" disabled>Select gender</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
               <Input
                 id="email"
@@ -109,7 +153,6 @@ export default function Register() {
                 autoComplete="email"
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
               <div className="relative">
@@ -124,31 +167,61 @@ export default function Register() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
               {passwordStrength && (
-                <div className="flex gap-1 mt-1.5">
-                  {["weak", "medium", "strong"].map((level) => (
-                    <div
-                      key={level}
-                      className={`h-1 flex-1 rounded-full transition-colors ${
-                        passwordStrength === "strong"
-                          ? "bg-green-500"
-                          : passwordStrength === "medium"
-                          ? level === "weak" || level === "medium"
-                            ? "bg-yellow-500"
-                            : "bg-muted"
-                          : level === "weak"
-                          ? "bg-destructive"
-                          : "bg-muted"
-                      }`}
-                    />
-                  ))}
+                <div className={`text-xs mt-1 ${passwordStrength === "strong" ? "text-green-600" : passwordStrength === "medium" ? "text-yellow-600" : "text-red-600"}`}>
+                  Password strength: {passwordStrength}
                 </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-foreground font-medium">
+                Confirm Password
+              </Label>
+
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Re-enter password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground pr-10"
+                  autoComplete="new-password"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              
+              {confirmPassword && (
+                <p
+                  className={`text-sm mt-1 ${
+                    confirmPassword === password
+                      ? "text-green-500"
+                      : "text-destructive"
+                  }`}
+                >
+                  {confirmPassword === password
+                    ? "Passwords match"
+                    : "Passwords do not match"}
+                </p>
               )}
             </div>
 

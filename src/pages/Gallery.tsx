@@ -9,12 +9,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { searchImages, ImageRecord } from "@/lib/api";
 import { isAuthenticated, getUserId } from "@/lib/auth";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ImageDetailModal from "@/components/ImageDetailModal";
 
 const LIMIT = 12;
 
-function useImageFetch(query: string, page: number, authed: boolean) {
+function useImageFetch(query: string, page: number, authed: boolean, myLibrary: boolean = false) {
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ function useImageFetch(query: string, page: number, authed: boolean) {
     if (!authed) return;
     setLoading(true);
     try {
-      const result = await searchImages(query, LIMIT, page * LIMIT);
+      const result = await searchImages(query, LIMIT, page * LIMIT, myLibrary);
       setImages(result.data || []);
       setTotalCount(result.totalCount || 0);
     } catch {
@@ -31,7 +31,7 @@ function useImageFetch(query: string, page: number, authed: boolean) {
     } finally {
       setLoading(false);
     }
-  }, [query, page, authed]);
+  }, [query, page, authed, myLibrary]);
 
   useEffect(() => { fetchImages(); }, [fetchImages]);
 
@@ -154,13 +154,14 @@ function PublicGallery({
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [page, setPage] = useState(0);
   const authed = isAuthenticated();
+  const myLibrary = false;
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedQuery(query); setPage(0); }, 400);
     return () => clearTimeout(t);
   }, [query]);
 
-  const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed);
+  const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed, myLibrary);
   const images = allImages.filter((img) => !img.is_private);
   const totalPages = Math.ceil(totalCount / LIMIT);
 
@@ -207,13 +208,14 @@ function MyLibrary({
   const [privacyTab, setPrivacyTab] = useState<"all" | "public" | "private">("all");
   const authed = isAuthenticated();
   const userId = getUserId();
+  const myLibrary = true;
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedQuery(query); setPage(0); }, 400);
     return () => clearTimeout(t);
   }, [query]);
 
-  const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed);
+  const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed, myLibrary);
 
   // Filter to only show the logged-in user's images
   const myImages = allImages.filter((img) => img.user_id === userId);
@@ -287,10 +289,13 @@ function MyLibrary({
 
 // ─── Main Gallery ──────────────────────────────────────────────────────────────
 export default function Gallery() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [gridMode, setGridMode] = useState<"masonry" | "grid">("masonry");
   const [selectedImage, setSelectedImage] = useState<ImageRecord | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const authed = isAuthenticated();
+  const requestedTab = searchParams.get("tab");
+  const activeTab = requestedTab === "my-library" ? "my-library" : "public";
 
   function handleDeleted() {
     setSelectedImage(null);
@@ -351,7 +356,14 @@ export default function Gallery() {
         </div>
       </div>
 
-      <Tabs defaultValue="public" className="w-full" key={refreshKey}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          setSearchParams(value === "my-library" ? { tab: "my-library" } : {});
+        }}
+        className="w-full"
+        key={refreshKey}
+      >
         <TabsList className="mb-6 bg-muted border border-border h-auto p-1 gap-1">
           <TabsTrigger
             value="public"
