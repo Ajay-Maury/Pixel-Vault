@@ -281,7 +281,7 @@ export default function Profile() {
         </Link>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid gap-6">
         <section className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-card">
           <div className="absolute inset-x-0 top-0 h-[56%] bg-gradient-gold opacity-60" />
           <div className="relative p-6 sm:p-8">
