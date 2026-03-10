@@ -1,11 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { Camera, Upload, LogIn, UserPlus, Search, UserCircle } from "lucide-react";
+import { Camera, Upload, LogIn, UserPlus, Search, UserCircle, Sun, Moon } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function Navbar() {
   const location = useLocation();
   const authed = isAuthenticated();
+  const { theme, toggleTheme } = useTheme();
 
   const isActive = (path: string) =>
     location.pathname === path
@@ -46,7 +48,16 @@ export default function Navbar() {
           )}
 
           {/* Auth buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
             {authed ? (
               <>
                 <Link to="/upload" className="md:hidden">
