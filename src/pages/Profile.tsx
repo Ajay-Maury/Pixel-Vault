@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Accessibility,
   AlertCircle,
+  Calendar,
+  Camera,
   Eye,
   EyeOff,
   Image as ImageIcon,
@@ -11,7 +13,8 @@ import {
   Mail,
   PencilLine,
   Save,
-  Sparkles,
+  Shield,
+  Upload,
   User,
   UserRound,
 } from "lucide-react";
@@ -29,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { getProfile, searchImages, changePassword, updateProfile, type ProfileRecord } from "@/lib/api";
 import { getToken, removeToken } from "@/lib/auth";
 import { toast } from "sonner";
@@ -51,7 +55,6 @@ const profileSchema = z.object({
 function extractProfile(data: any): ProfileRecord | null {
   const source = data?.user ?? data?.data ?? data?.profile ?? data;
   if (!source?.email) return null;
-
   return {
     id: source.id,
     email: source.email,
@@ -64,24 +67,18 @@ function extractProfile(data: any): ProfileRecord | null {
 function getGenderMeta(gender?: string | null) {
   const normalized = gender?.toUpperCase();
   if (normalized === "FEMALE") {
-    return {
-      label: "Female",
-      icon: Accessibility,
-      badgeClass: "bg-rose-500/12 text-rose-300 border-rose-400/20",
-    };
+    return { label: "Female", icon: Accessibility, color: "text-rose-400" };
   }
   if (normalized === "MALE") {
-    return {
-      label: "Male",
-      icon: UserRound,
-      badgeClass: "bg-sky-500/12 text-sky-300 border-sky-400/20",
-    };
+    return { label: "Male", icon: UserRound, color: "text-sky-400" };
   }
-  return {
-    label: normalized ? "Other" : "Not set",
-    icon: User,
-    badgeClass: "bg-muted text-muted-foreground border-border",
-  };
+  return { label: normalized ? "Other" : "Not set", icon: User, color: "text-muted-foreground" };
+}
+
+function getInitials(firstName: string, lastName: string, email: string) {
+  if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
+  if (firstName) return firstName.slice(0, 2).toUpperCase();
+  return email?.slice(0, 2).toUpperCase() ?? "PV";
 }
 
 export default function Profile() {
@@ -115,6 +112,10 @@ export default function Profile() {
     if (fullName) return fullName;
     return profile?.email?.split("@")[0] ?? "PixelVault User";
   }, [firstName, lastName, profile]);
+  const initials = useMemo(
+    () => getInitials(profile?.firstName ?? firstName, profile?.lastName ?? lastName, profile?.email ?? ""),
+    [firstName, lastName, profile]
+  );
   const hasProfileChanges = Boolean(
     profile && (
       firstName.trim() !== profile.firstName ||
@@ -153,9 +154,7 @@ export default function Profile() {
         setLastName(nextProfile.lastName);
         setGender((nextProfile.gender?.toUpperCase() as "MALE" | "FEMALE" | "OTHER") || "OTHER");
         localStorage.setItem("userEmail", nextProfile.email);
-        if (nextProfile.id) {
-          localStorage.setItem("userId", nextProfile.id);
-        }
+        if (nextProfile.id) localStorage.setItem("userId", nextProfile.id);
       } catch {
         if (mounted) toast.error("Unable to load your profile");
       } finally {
@@ -177,10 +176,7 @@ export default function Profile() {
 
     void loadProfile();
     void loadUploads();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [token, navigate]);
 
   function handleLogout() {
@@ -207,10 +203,16 @@ export default function Profile() {
 
     setSavingProfile(true);
     try {
-      const response = await updateProfile(result.data);
+      const response = await updateProfile({
+        firstName: result.data.firstName,
+        lastName: result.data.lastName,
+        gender: result.data.gender,
+      });
       const nextProfile = extractProfile(response) ?? {
         ...profile,
-        ...result.data,
+        firstName: result.data.firstName,
+        lastName: result.data.lastName,
+        gender: result.data.gender,
         email: profile?.email ?? localStorage.getItem("userEmail") ?? "",
       };
 
@@ -266,332 +268,214 @@ export default function Profile() {
   if (!token) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 animate-fade-in">
-      <div className="mb-8 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-primary text-sm font-semibold tracking-[0.18em] uppercase mb-2">Profile</p>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground">Account Settings</h1>
-          <p className="text-muted-foreground mt-2">Manage your identity, preferences, and account security.</p>
+    <div className="min-h-[calc(100vh-4rem)] bg-background">
+      {/* Hero Banner */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-hero" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--gold)/0.15),transparent_60%)]" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-20 sm:pt-14 sm:pb-24">
+          <p className="text-primary text-xs font-semibold tracking-[0.2em] uppercase mb-3">Account</p>
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground">
+            Your Profile
+          </h1>
+          <p className="text-muted-foreground mt-2 max-w-lg text-sm sm:text-base">
+            Manage your identity, preferences, and account security.
+          </p>
         </div>
-        <Link to="/?tab=my-library">
-          <Button variant="outline" className="border-border text-foreground hover:bg-muted gap-2">
-            <ImageIcon className="w-4 h-4" />
-            Open My Library
-          </Button>
-        </Link>
       </div>
 
-      <div className="grid gap-6">
-        <section className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-card">
-          <div className="absolute inset-x-0 top-0 h-[56%] bg-gradient-gold opacity-60" />
-          <div className="relative p-6 sm:p-8">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-4">
-                <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-background/90 shadow-glow ring-1 ring-white/10">
-                  <genderMeta.icon className="w-10 h-10 text-primary" />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-14 pb-16 relative z-10">
+        {/* Profile Card */}
+        <section className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
+          <div className="p-5 sm:p-8">
+            <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-center sm:items-start">
+              {/* Avatar */}
+              <div className="relative shrink-0">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow text-primary-foreground font-display text-2xl sm:text-3xl font-bold">
+                  {profileLoading ? <Loader2 className="w-8 h-8 animate-spin" /> : initials}
                 </div>
-                <div className="pt-1">
-                  <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${genderMeta.badgeClass}`}>
-                    <genderMeta.icon className="w-3.5 h-3.5" />
-                    {genderMeta.label}
-                  </div>
-                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground mt-4">{displayName}</h2>
-                  <p className="text-muted-foreground flex items-center gap-2 mt-2">
-                    <Mail className="w-4 h-4" />
-                    {profileLoading ? "Loading email..." : (profile?.email || "No email")}
-                  </p>
+                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-emerald-500 border-2 border-card flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-emerald-100" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:min-w-64">
-                <StatCard
-                  icon={<ImageIcon className="w-4 h-4" />}
-                  label="Uploads"
-                  value={loadingCount ? "—" : String(uploadCount ?? 0)}
-                  loading={loadingCount}
-                />
-                <StatCard
-                  icon={<Sparkles className="w-4 h-4" />}
-                  label="Status"
-                  value="Active"
-                  subValue="member"
-                />
+              {/* Info */}
+              <div className="flex-1 text-center sm:text-left min-w-0">
+                <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-foreground truncate">
+                  {profileLoading ? "Loading..." : displayName}
+                </h2>
+                <p className="text-muted-foreground flex items-center gap-1.5 mt-1 justify-center sm:justify-start text-sm">
+                  <Mail className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{profileLoading ? "Loading..." : (profile?.email || "No email")}</span>
+                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-3 justify-center sm:justify-start">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium ${genderMeta.color}`}>
+                    <genderMeta.icon className="w-3 h-3" />
+                    {genderMeta.label}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-emerald-400">
+                    <Shield className="w-3 h-3" />
+                    Active
+                  </span>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="flex gap-3 shrink-0">
+                <div className="text-center px-4 py-3 rounded-xl border border-border bg-background/60 min-w-[80px]">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
+                    <Camera className="w-3 h-3" />
+                    Uploads
+                  </div>
+                  {loadingCount ? (
+                    <div className="h-6 w-10 mx-auto rounded bg-border animate-pulse" />
+                  ) : (
+                    <p className="text-xl font-bold text-foreground">{uploadCount ?? 0}</p>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <InfoChip label="First Name" value={profileLoading ? "Loading..." : (profile?.firstName || "—")} />
-              <InfoChip label="Last Name" value={profileLoading ? "Loading..." : (profile?.lastName || "—")} />
-              <InfoChip label="Gender" value={profileLoading ? "Loading..." : genderMeta.label} />
+            {/* Detail chips */}
+            <Separator className="my-5 sm:my-6 bg-border/60" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <DetailRow icon={<User className="w-3.5 h-3.5" />} label="First Name" value={profileLoading ? "..." : (profile?.firstName || "—")} />
+              <DetailRow icon={<User className="w-3.5 h-3.5" />} label="Last Name" value={profileLoading ? "..." : (profile?.lastName || "—")} />
+              <DetailRow icon={<Calendar className="w-3.5 h-3.5" />} label="Gender" value={profileLoading ? "..." : genderMeta.label} />
             </div>
           </div>
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-2 xl:col-span-2">
-          <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
-            <div className="flex items-center gap-2 mb-1">
-              <PencilLine className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-foreground">Update Profile</h3>
+        {/* Action Grid */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-6">
+          {/* Edit Profile */}
+          <Dialog open={profileModalOpen} onOpenChange={setProfileModalOpen}>
+            <DialogTrigger asChild>
+              <button className="group text-left rounded-xl border border-border bg-card p-5 shadow-card hover:border-primary/40 hover:shadow-glow transition-all duration-300">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                  <PencilLine className="w-5 h-5 text-primary" />
+                </div>
+                <h3 className="font-semibold text-foreground text-sm">Edit Profile</h3>
+                <p className="text-xs text-muted-foreground mt-1">Update your name & gender</p>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="border-border bg-card shadow-card sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-display text-2xl text-foreground">Edit Profile</DialogTitle>
+                <DialogDescription>Update your personal information below.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="firstName" className="text-foreground font-medium text-sm">First Name</Label>
+                  <Input id="firstName" value={firstName} onChange={(e) => { setFirstName(e.target.value); setProfileErrors((p) => ({ ...p, firstName: "" })); }} placeholder="Enter your first name" className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground" disabled={profileLoading || savingProfile} />
+                  {profileErrors.firstName && <InlineError message={profileErrors.firstName} />}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="lastName" className="text-foreground font-medium text-sm">Last Name</Label>
+                  <Input id="lastName" value={lastName} onChange={(e) => { setLastName(e.target.value); setProfileErrors((p) => ({ ...p, lastName: "" })); }} placeholder="Enter your last name" className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground" disabled={profileLoading || savingProfile} />
+                  {profileErrors.lastName && <InlineError message={profileErrors.lastName} />}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-foreground font-medium text-sm">Email</Label>
+                  <Input id="email" value={profile?.email ?? ""} className="bg-muted border-border text-muted-foreground h-11" disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gender" className="text-foreground font-medium text-sm">Gender</Label>
+                  <select id="gender" value={gender} onChange={(e) => { setGender(e.target.value as "MALE" | "FEMALE" | "OTHER"); setProfileErrors((p) => ({ ...p, gender: "" })); }} className="h-11 w-full rounded-md border border-border bg-muted px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary" disabled={profileLoading || savingProfile}>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                  {profileErrors.gender && <InlineError message={profileErrors.gender} />}
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={profileLoading || savingProfile || !hasProfileChanges} className="w-full h-11 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow font-semibold gap-2 sm:w-auto">
+                    {savingProfile ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</> : <><Save className="w-4 h-4" />Save Changes</>}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Change Password */}
+          <Dialog open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+            <DialogTrigger asChild>
+              <button className="group text-left rounded-xl border border-border bg-card p-5 shadow-card hover:border-primary/40 hover:shadow-glow transition-all duration-300">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                  <KeyRound className="w-5 h-5 text-primary" />
+                </div>
+                <h3 className="font-semibold text-foreground text-sm">Change Password</h3>
+                <p className="text-xs text-muted-foreground mt-1">Update your security credentials</p>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="border-border bg-card shadow-card sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-display text-2xl text-foreground">Change Password</DialogTitle>
+                <DialogDescription>Verify your current password before setting a new one.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <PasswordField id="currentPassword" label="Current Password" value={currentPassword} show={showCurrent} onToggle={() => setShowCurrent((v) => !v)} onChange={(v) => { setCurrentPassword(v.slice(0, 100)); setFieldErrors((p) => ({ ...p, currentPassword: "" })); }} autoComplete="current-password" placeholder="Enter current password" error={fieldErrors.currentPassword} />
+                <div className="space-y-1.5">
+                  <PasswordField id="newPassword" label="New Password" value={newPassword} show={showNew} onToggle={() => setShowNew((v) => !v)} onChange={(v) => { setNewPassword(v.slice(0, 100)); setFieldErrors((p) => ({ ...p, newPassword: "" })); }} autoComplete="new-password" placeholder="Min. 6 characters" error={fieldErrors.newPassword} />
+                  {newPassword.length > 0 && <PasswordStrength password={newPassword} />}
+                </div>
+                <PasswordField id="confirmPassword" label="Confirm Password" value={confirmPassword} show={showConfirm} onToggle={() => setShowConfirm((v) => !v)} onChange={(v) => { setConfirmPassword(v.slice(0, 100)); setFieldErrors((p) => ({ ...p, confirmPassword: "" })); }} autoComplete="new-password" placeholder="Repeat new password" error={fieldErrors.confirmPassword} />
+                <DialogFooter>
+                  <Button type="submit" disabled={changingPw || !canSubmitPassword} className="w-full h-11 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow font-semibold gap-2 sm:w-auto">
+                    {changingPw ? <><Loader2 className="w-4 h-4 animate-spin" />Updating...</> : <><KeyRound className="w-4 h-4" />Update Password</>}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Upload shortcut */}
+          <Link to="/upload" className="group text-left rounded-xl border border-border bg-card p-5 shadow-card hover:border-primary/40 hover:shadow-glow transition-all duration-300 block">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+              <Upload className="w-5 h-5 text-primary" />
             </div>
-            <p className="text-sm text-muted-foreground mb-5">Open a modal to edit your account details.</p>
-            <Dialog open={profileModalOpen} onOpenChange={setProfileModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full h-11 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow font-semibold gap-2">
-                  <PencilLine className="w-4 h-4" />
-                  Update Profile
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="border-border bg-card shadow-card sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="font-display text-2xl text-foreground">Update Profile</DialogTitle>
-                  <DialogDescription>Change your profile information and sync it with the backend.</DialogDescription>
-                </DialogHeader>
+            <h3 className="font-semibold text-foreground text-sm">Upload Image</h3>
+            <p className="text-xs text-muted-foreground mt-1">Add new images to your vault</p>
+          </Link>
 
-                <form onSubmit={handleProfileUpdate} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="firstName" className="text-foreground font-medium text-sm">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={firstName}
-                      onChange={(e) => {
-                        setFirstName(e.target.value);
-                        setProfileErrors((prev) => ({ ...prev, firstName: "" }));
-                      }}
-                      placeholder="Enter your first name"
-                      className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground"
-                      disabled={profileLoading || savingProfile}
-                    />
-                    {profileErrors.firstName && <InlineError message={profileErrors.firstName} />}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lastName" className="text-foreground font-medium text-sm">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={lastName}
-                      onChange={(e) => {
-                        setLastName(e.target.value);
-                        setProfileErrors((prev) => ({ ...prev, lastName: "" }));
-                      }}
-                      placeholder="Enter your last name"
-                      className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground"
-                      disabled={profileLoading || savingProfile}
-                    />
-                    {profileErrors.lastName && <InlineError message={profileErrors.lastName} />}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-foreground font-medium text-sm">Email</Label>
-                    <Input
-                      id="email"
-                      value={profile?.email ?? ""}
-                      className="bg-muted border-border text-muted-foreground h-11"
-                      disabled
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="gender" className="text-foreground font-medium text-sm">Gender</Label>
-                    <select
-                      id="gender"
-                      value={gender}
-                      onChange={(e) => {
-                        setGender(e.target.value as "MALE" | "FEMALE" | "OTHER");
-                        setProfileErrors((prev) => ({ ...prev, gender: "" }));
-                      }}
-                      className="h-11 w-full rounded-md border border-border bg-muted px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      disabled={profileLoading || savingProfile}
-                    >
-                      <option value="MALE">Male</option>
-                      <option value="FEMALE">Female</option>
-                      <option value="OTHER">Other</option>
-                    </select>
-                    {profileErrors.gender && <InlineError message={profileErrors.gender} />}
-                  </div>
-
-                  <DialogFooter>
-                    <Button
-                      type="submit"
-                      disabled={profileLoading || savingProfile || !hasProfileChanges}
-                      className="w-full h-11 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow font-semibold gap-2 sm:w-auto"
-                    >
-                      {savingProfile ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          Update Profile
-                        </>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </section>
-
-          <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
-            <div className="flex items-center gap-2 mb-1">
-              <KeyRound className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-foreground">Reset Password</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-5">Open a modal to verify your current password and set a new one.</p>
-            <Dialog open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full h-11 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow font-semibold gap-2">
-                  <KeyRound className="w-4 h-4" />
-                  Reset Password
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="border-border bg-card shadow-card sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="font-display text-2xl text-foreground">Reset Password</DialogTitle>
-                  <DialogDescription>Verify your current password before saving the new one.</DialogDescription>
-                </DialogHeader>
-
-                <form onSubmit={handlePasswordChange} className="space-y-4">
-                  <PasswordField
-                    id="currentPassword"
-                    label="Current Password"
-                    value={currentPassword}
-                    show={showCurrent}
-                    onToggle={() => setShowCurrent((v) => !v)}
-                    onChange={(value) => {
-                      setCurrentPassword(value.slice(0, 100));
-                      setFieldErrors((p) => ({ ...p, currentPassword: "" }));
-                    }}
-                    autoComplete="current-password"
-                    placeholder="Enter your current password"
-                    error={fieldErrors.currentPassword}
-                  />
-
-                  <div className="space-y-1.5">
-                    <PasswordField
-                      id="newPassword"
-                      label="New Password"
-                      value={newPassword}
-                      show={showNew}
-                      onToggle={() => setShowNew((v) => !v)}
-                      onChange={(value) => {
-                        setNewPassword(value.slice(0, 100));
-                        setFieldErrors((p) => ({ ...p, newPassword: "" }));
-                      }}
-                      autoComplete="new-password"
-                      placeholder="Min. 6 characters"
-                      error={fieldErrors.newPassword}
-                    />
-                    {newPassword.length > 0 && <PasswordStrength password={newPassword} />}
-                  </div>
-
-                  <PasswordField
-                    id="confirmPassword"
-                    label="Confirm New Password"
-                    value={confirmPassword}
-                    show={showConfirm}
-                    onToggle={() => setShowConfirm((v) => !v)}
-                    onChange={(value) => {
-                      setConfirmPassword(value.slice(0, 100));
-                      setFieldErrors((p) => ({ ...p, confirmPassword: "" }));
-                    }}
-                    autoComplete="new-password"
-                    placeholder="Repeat new password"
-                    error={fieldErrors.confirmPassword}
-                  />
-
-                  <DialogFooter>
-                    <Button
-                      type="submit"
-                      disabled={changingPw || !canSubmitPassword}
-                      className="w-full h-11 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow font-semibold gap-2 sm:w-auto"
-                    >
-                      {changingPw ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <KeyRound className="w-4 h-4" />
-                          Reset Password
-                        </>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </section>
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-2 xl:col-span-2">
-          <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
-            <div className="flex items-center gap-2 mb-1">
+          {/* My Library */}
+          <Link to="/?tab=my-library" className="group text-left rounded-xl border border-border bg-card p-5 shadow-card hover:border-primary/40 hover:shadow-glow transition-all duration-300 block">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
               <ImageIcon className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-foreground">Upload</h3>
             </div>
-            <p className="text-sm text-muted-foreground mb-5">Jump straight to the upload flow from here.</p>
-            <Link to="/upload" className="block">
-              <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted gap-2">
-                <ImageIcon className="w-4 h-4" />
-                Open Upload Page
-              </Button>
-            </Link>
-          </section>
-
-          <section className="rounded-3xl border border-destructive/30 bg-card p-6 shadow-card">
-            <div className="flex h-full flex-col justify-between gap-6">
-              <div>
-                <h3 className="font-semibold text-foreground mb-1">Sign out</h3>
-                <p className="text-sm text-muted-foreground">
-                  End the current session and return to the login screen.
-                </p>
-              </div>
-
-              <Button onClick={handleLogout} variant="destructive" className="w-full gap-2 font-semibold">
-                <LogOut className="w-4 h-4" />
-                Logout
-              </Button>
-            </div>
-          </section>
+            <h3 className="font-semibold text-foreground text-sm">My Library</h3>
+            <p className="text-xs text-muted-foreground mt-1">Browse your uploaded images</p>
+          </Link>
         </div>
+
+        {/* Sign Out */}
+        <section className="mt-6 rounded-xl border border-destructive/20 bg-card p-5 shadow-card">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">Sign Out</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">End your current session and return to the login screen.</p>
+            </div>
+            <Button onClick={handleLogout} variant="destructive" size="sm" className="gap-2 font-semibold shrink-0">
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </div>
+        </section>
       </div>
     </div>
   );
 }
 
-function StatCard({ icon, label, value, subValue, loading }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  subValue?: string;
-  loading?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-background/60 p-4">
-      <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-2">
-        {icon}
-        {label}
-      </div>
-      {loading ? (
-        <div className="h-5 w-16 rounded bg-border animate-pulse" />
-      ) : (
-        <div className="font-semibold text-lg text-foreground">
-          {value}
-          {subValue && <span className="ml-1 text-sm font-normal text-muted-foreground">{subValue}</span>}
-        </div>
-      )}
-    </div>
-  );
-}
+/* ─── Sub-components ─── */
 
-function InfoChip({ label, value }: { label: string; value: string }) {
+function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-background/50 px-4 py-3">
-      <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p className="text-foreground font-medium mt-1">{value}</p>
+    <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 px-4 py-3">
+      <span className="text-muted-foreground shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium text-foreground truncate">{value}</p>
+      </div>
     </div>
   );
 }
@@ -605,55 +489,17 @@ function InlineError({ message }: { message: string }) {
   );
 }
 
-function ToggleVisible({ show, toggle }: { show: boolean; toggle: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-      tabIndex={-1}
-    >
-      {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-    </button>
-  );
-}
-
-function PasswordField({
-  id,
-  label,
-  value,
-  show,
-  onToggle,
-  onChange,
-  placeholder,
-  autoComplete,
-  error,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  show: boolean;
-  onToggle: () => void;
-  onChange: (value: string) => void;
-  placeholder: string;
-  autoComplete: string;
-  error?: string;
+function PasswordField({ id, label, value, show, onToggle, onChange, placeholder, autoComplete, error }: {
+  id: string; label: string; value: string; show: boolean; onToggle: () => void; onChange: (v: string) => void; placeholder: string; autoComplete: string; error?: string;
 }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-foreground font-medium text-sm">{label}</Label>
       <div className="relative">
-        <Input
-          id={id}
-          type={show ? "text" : "password"}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground pr-10"
-          autoComplete={autoComplete}
-          maxLength={100}
-        />
-        <ToggleVisible show={show} toggle={onToggle} />
+        <Input id={id} type={show ? "text" : "password"} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} className="bg-muted border-border focus:border-primary h-11 text-foreground placeholder:text-muted-foreground pr-10" autoComplete={autoComplete} maxLength={100} />
+        <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
       </div>
       {error && <InlineError message={error} />}
     </div>
@@ -661,22 +507,16 @@ function PasswordField({
 }
 
 function PasswordStrength({ password }: { password: string }) {
-  const hasUpper = /[A-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[^A-Za-z0-9]/.test(password);
-  const score = [password.length >= 8, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
+  const score = [password.length >= 8, /[A-Z]/.test(password), /[0-9]/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
   const levels = ["", "Weak", "Fair", "Good", "Strong"];
   const barColors = ["", "bg-destructive", "bg-yellow-500", "bg-blue-500", "bg-primary"];
   const textColors = ["", "text-destructive", "text-yellow-500", "text-blue-500", "text-primary"];
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       <div className="flex gap-1">
         {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? barColors[score] : "bg-border"}`}
-          />
+          <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? barColors[score] : "bg-border"}`} />
         ))}
       </div>
       <p className={`text-xs font-medium ${textColors[score]}`}>{levels[score]}</p>
