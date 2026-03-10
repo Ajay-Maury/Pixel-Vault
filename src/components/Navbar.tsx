@@ -7,6 +7,7 @@ import { useTheme } from "@/components/ThemeProvider";
 export default function Navbar() {
   const location = useLocation();
   const authed = isAuthenticated();
+  const { theme, toggleTheme } = useTheme();
 
   const isActive = (path: string) =>
     location.pathname === path
