@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { Camera, Upload, LogIn, UserPlus, Search, UserCircle } from "lucide-react";
+import { Camera, Upload, LogIn, UserPlus, Search, UserCircle, Sun, Moon } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function Navbar() {
   const location = useLocation();
