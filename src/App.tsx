@@ -25,6 +25,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 const queryClient = new QueryClient();
 
 const App = () => (
+  <ThemeProvider>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
