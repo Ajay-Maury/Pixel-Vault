@@ -61,6 +61,7 @@ function extractProfile(data: any): ProfileRecord | null {
     firstName: source.firstName ?? "",
     lastName: source.lastName ?? "",
     gender: source.gender ?? null,
+    uploadCount: source.uploadCount ?? 0,
   };
 }
 
@@ -86,7 +87,6 @@ export default function Profile() {
   const token = getToken();
 
   const [uploadCount, setUploadCount] = useState<number | null>(null);
-  const [loadingCount, setLoadingCount] = useState(true);
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -153,6 +153,7 @@ export default function Profile() {
         setFirstName(nextProfile.firstName);
         setLastName(nextProfile.lastName);
         setGender((nextProfile.gender?.toUpperCase() as "MALE" | "FEMALE" | "OTHER") || "OTHER");
+        setUploadCount(nextProfile.uploadCount);
         localStorage.setItem("userEmail", nextProfile.email);
         if (nextProfile.id) localStorage.setItem("userId", nextProfile.id);
       } catch {
@@ -162,20 +163,7 @@ export default function Profile() {
       }
     }
 
-    async function loadUploads() {
-      setLoadingCount(true);
-      try {
-        const res = await searchImages("", 1, 0, true);
-        if (mounted) setUploadCount(res.totalCount ?? 0);
-      } catch {
-        if (mounted) setUploadCount(0);
-      } finally {
-        if (mounted) setLoadingCount(false);
-      }
-    }
-
     void loadProfile();
-    void loadUploads();
     return () => { mounted = false; };
   }, [token, navigate]);
 
@@ -327,7 +315,7 @@ export default function Profile() {
                     <Camera className="w-3 h-3" />
                     Uploads
                   </div>
-                  {loadingCount ? (
+                  {profileLoading ? (
                     <div className="h-6 w-10 mx-auto rounded bg-border animate-pulse" />
                   ) : (
                     <p className="text-xl font-bold text-foreground">{uploadCount ?? 0}</p>

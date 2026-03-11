@@ -49,6 +49,7 @@ export interface ProfileRecord {
   firstName: string;
   lastName: string;
   gender?: string | null;
+  uploadCount?: number;
 }
 
 // Auth
