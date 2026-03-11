@@ -15,6 +15,18 @@ A modern web application for uploading, managing, and sharing digital images. Bu
 - Password strength meter on registration
 - Protected routes with automatic redirect
 
+---
+
+### Login Page
+  <img width="1469" height="802" alt="login-page" src="https://github.com/user-attachments/assets/04813aac-25e1-4d9d-9675-4726edc595e7" />
+
+---
+
+### Register Page
+  <img width="1470" height="800" alt="Create-account" src="https://github.com/user-attachments/assets/3b0ff975-6038-43d8-a186-378d898e0e8f" />
+
+---
+
 ### 🖼️ Image Upload
 - Drag-and-drop or file picker upload
 - Client-side validation (type, size)
@@ -23,14 +35,25 @@ A modern web application for uploading, managing, and sharing digital images. Bu
 - Title, description, keywords, and privacy (public/private) settings
 - Cloud storage via Cloudinary
 
+    <img width="1012" height="800" alt="Upload-Image" src="https://github.com/user-attachments/assets/180441b4-a612-48a8-837b-028fe2bb4fd3" />
+
+---
+
 ### 🎨 Gallery
 - Two grid modes: masonry and uniform grid
 - Full-text search by title or keywords
 - Pagination with page navigation
 - Privacy badges (🔒 Private / 🌐 Public) on library cards
+- ---
 - **Public Gallery** — browse all public images shared by users
-- **My Library** — view only your own uploads with privacy filters (All / Public / Private)
+<img width="1062" height="800" alt="Public Gallery" src="https://github.com/user-attachments/assets/515f6194-bb0b-4713-9f7d-4f764b3d6db8" />
 
+---
+
+- **My Library** — view only your own uploads with privacy filters (All / Public / Private)
+<img width="1161" height="801" alt="My Library Gallery" src="https://github.com/user-attachments/assets/78003825-8b09-42e3-971e-3b9ca5a27500" />  
+
+---
 ### 🔍 Image Detail Modal
 - Adaptive layout based on image dimensions (portrait vs landscape)
 - Full-size image display without wasted space
@@ -38,17 +61,26 @@ A modern web application for uploading, managing, and sharing digital images. Bu
 - Copy image URL to clipboard
 - Open image in new tab or download
 
+  <img width="1278" height="801" alt="Image-Detail" src="https://github.com/user-attachments/assets/ab5ae8e0-e7dc-48e2-b953-a82acf14d5a7" />
+
+---
 ### ✏️ Image Management (Owner Only)
 - Edit title, description, and keywords inline
 - Toggle privacy between public and private
 - Delete images with confirmation dialog
 
+  <img width="1168" height="800" alt="Edit-Image" src="https://github.com/user-attachments/assets/3b0b1e97-b38f-4f30-8b69-6bc268b1e5f0" />
+
+---
 ### 👤 Profile Page
 - Hero banner with avatar displaying user initials
 - View account info and upload statistics
 - Edit profile (first name, last name, gender)
 - Change password with real-time strength indicator
 - Quick-action grid: Edit Profile, Change Password, Upload, My Library
+
+  <img width="1332" height="797" alt="Profilr-page" src="https://github.com/user-attachments/assets/1891bb7d-cd45-422e-b82f-901eb5ddff5c" />
+
 
 ### 🌗 Dark / Light Mode
 - Toggle between dark and light themes from the navbar
@@ -99,7 +131,7 @@ VITE_BASE_URL= <Backend Service URL>
 ```
 
 ### Backend Service
-Get Backend Service Repository [Here](https://github.com/Ajay-Maury/-Pixel-Vault-Backend.git)
+Get Backend Service Repository [Here](https://github.com/Ajay-Maury/Pixel-Vault-Backend.git)
 
 ### Running Locally
 
@@ -115,13 +147,16 @@ Open [http://localhost:5173](http://localhost:5173).
 |--------|----------|-------------|
 | POST | `/user/register` | Register a new user |
 | POST | `/user/login` | Login and receive JWT |
+| PUT | `/user/change-password` | Change Password |
+| GET | `/user/profile` | Get Logged-in user profile |
+| PUT | `/user/profile` | Update user profile |
 | POST | `/image/search` | Search images (title/keywords) |
 | POST | `/image/minio-upload` | Upload image file |
 | POST | `/image/save` | Save image metadata |
 | PUT | `/image/:id` | Update image (title, description, keywords, privacy) |
 | DELETE | `/image/:id` | Delete an image |
 
-All `/image/*` endpoints require `Authorization: Bearer <token>` header.
+All `/image/*` and `/user/*` (instead of register and login) all endpoints require `Authorization: Bearer <token>` header.
 
 ## Project Structure
 
