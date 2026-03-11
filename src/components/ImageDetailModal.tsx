@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { X, Download, Copy, ExternalLink, Calendar, Maximize2, Tag, FileImage, Trash2, Pencil, Loader2, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,22 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
   const [description, setDescription] = useState(image.description || "");
   const [keywords, setKeywords] = useState((image.keywords || []).join(", "));
   const [isPrivate, setIsPrivate] = useState(image.is_private !== false);
+
+  // Determine if image is portrait/landscape to optimize layout
+  const isPortrait = image.height > image.width;
+  const aspectRatio = image.width / image.height;
+
+  // Calculate optimal image panel size
+  const imageStyle = useMemo(() => {
+    if (isPortrait) {
+      // Portrait: let height drive, cap at 85vh
+      const maxH = 85; // vh
+      const computedW = maxH * aspectRatio; // approximate vw-ish
+      return { maxHeight: `${maxH}vh`, width: 'auto', aspectRatio: `${image.width}/${image.height}` };
+    }
+    // Landscape or square
+    return { maxHeight: '80vh', width: '100%', aspectRatio: `${image.width}/${image.height}` };
+  }, [aspectRatio, isPortrait, image.width, image.height]);
 
   function formatFileSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
@@ -91,59 +107,37 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
       onClick={onClose}
     >
       <div
-        className="bg-card border border-border rounded-2xl shadow-image max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col md:flex-row animate-scale-in"
+        className={`bg-card border border-border rounded-2xl shadow-image max-h-[92vh] overflow-hidden flex animate-scale-in ${
+          isPortrait ? 'flex-row max-w-5xl w-auto' : 'flex-col max-w-5xl w-full'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Image side */}
-        <div className="md:w-1/2 bg-muted flex items-center justify-center overflow-hidden min-h-64 md:min-h-0">
+        <div
+          className={`bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ${
+            isPortrait ? 'h-auto' : 'w-full'
+          }`}
+        >
           <img
             src={image.image_url}
             alt={image.title}
-            className="w-full h-full object-contain max-h-[50vh] md:max-h-[80vh]"
+            className="object-contain block"
+            style={imageStyle}
           />
         </div>
 
         {/* Info side */}
-        <div className="md:w-1/2 flex flex-col overflow-y-auto">
+        <div className={`flex flex-col overflow-y-auto ${isPortrait ? 'w-80 min-w-[280px] flex-shrink-0' : 'w-full'}`}>
           {/* Header */}
-          <div className="flex items-start justify-between p-6 border-b border-border">
+          <div className="flex items-start justify-between p-5 border-b border-border">
             <div className="flex-1 pr-3">
               {editing ? (
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label className="text-foreground text-xs font-medium">Title</Label>
-                    <Input
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="bg-muted border-border focus:border-primary text-foreground h-9 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-foreground text-xs font-medium">Description</Label>
-                    <Textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="bg-muted border-border focus:border-primary text-foreground text-sm resize-none"
-                      rows={2}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-foreground text-xs font-medium">Keywords</Label>
-                    <Input
-                      value={keywords}
-                      onChange={(e) => setKeywords(e.target.value)}
-                      placeholder="comma separated"
-                      className="bg-muted border-border focus:border-primary text-foreground h-9 text-sm"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      {isPrivate ? <Lock className="w-3.5 h-3.5 text-muted-foreground" /> : <Globe className="w-3.5 h-3.5 text-primary" />}
-                      <span className="text-foreground text-sm">{isPrivate ? "Private" : "Public"}</span>
-                    </div>
-                    <Switch checked={!isPrivate} onCheckedChange={(c) => setIsPrivate(!c)} />
-                  </div>
-                </div>
+                <EditForm
+                  title={title} setTitle={setTitle}
+                  description={description} setDescription={setDescription}
+                  keywords={keywords} setKeywords={setKeywords}
+                  isPrivate={isPrivate} setIsPrivate={setIsPrivate}
+                />
               ) : (
                 <>
                   <h2 className="font-display text-xl font-bold text-foreground leading-tight">{image.title}</h2>
@@ -162,8 +156,8 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
           </div>
 
           {/* Metadata */}
-          <div className="p-6 flex-1 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="p-5 flex-1 space-y-4">
+            <div className="grid grid-cols-2 gap-2.5">
               <MetaStat icon={<Maximize2 className="w-3.5 h-3.5" />} label="Dimensions" value={`${image.width} × ${image.height}`} />
               <MetaStat icon={<FileImage className="w-3.5 h-3.5" />} label="File size" value={formatFileSize(image.size)} />
               {image.uploaded_at && (
@@ -204,9 +198,9 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
 
           {/* Delete confirmation */}
           {confirmDelete && (
-            <div className="px-6 pb-3">
+            <div className="px-5 pb-3">
               <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center justify-between">
-                <span className="text-destructive text-sm font-medium">Delete this image?</span>
+                <span className="text-destructive text-sm font-medium">Delete?</span>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)} className="h-7 text-xs border-border">Cancel</Button>
                   <Button size="sm" onClick={handleDelete} disabled={deleting} className="h-7 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90">
@@ -218,14 +212,14 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
           )}
 
           {/* Actions */}
-          <div className="p-6 border-t border-border flex gap-2 flex-wrap">
+          <div className="p-5 border-t border-border flex gap-2 flex-wrap">
             {editing ? (
               <>
                 <Button onClick={() => setEditing(false)} variant="outline" className="flex-1 border-border text-foreground hover:bg-muted">
                   Cancel
                 </Button>
                 <Button onClick={handleSave} disabled={saving} className="flex-1 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
                 </Button>
               </>
             ) : (
@@ -259,6 +253,37 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EditForm({ title, setTitle, description, setDescription, keywords, setKeywords, isPrivate, setIsPrivate }: {
+  title: string; setTitle: (v: string) => void;
+  description: string; setDescription: (v: string) => void;
+  keywords: string; setKeywords: (v: string) => void;
+  isPrivate: boolean; setIsPrivate: (v: boolean) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label className="text-foreground text-xs font-medium">Title</Label>
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} className="bg-muted border-border focus:border-primary text-foreground h-9 text-sm" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-foreground text-xs font-medium">Description</Label>
+        <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="bg-muted border-border focus:border-primary text-foreground text-sm resize-none" rows={2} />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-foreground text-xs font-medium">Keywords</Label>
+        <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="comma separated" className="bg-muted border-border focus:border-primary text-foreground h-9 text-sm" />
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          {isPrivate ? <Lock className="w-3.5 h-3.5 text-muted-foreground" /> : <Globe className="w-3.5 h-3.5 text-primary" />}
+          <span className="text-foreground text-sm">{isPrivate ? "Private" : "Public"}</span>
+        </div>
+        <Switch checked={!isPrivate} onCheckedChange={(c) => setIsPrivate(!c)} />
       </div>
     </div>
   );
