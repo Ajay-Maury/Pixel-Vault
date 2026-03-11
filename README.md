@@ -131,7 +131,9 @@ VITE_BASE_URL= <Backend Service URL>
 ```
 
 ### Backend Service
-Get Backend Service Repository [Here](https://github.com/Ajay-Maury/Pixel-Vault-Backend.git)
+
+The backend service for this application is available here:
+👉 [https://github.com/Ajay-Maury/Pixel-Vault-Backend](https://github.com/Ajay-Maury/Pixel-Vault-Backend.git)
 
 ### Running Locally
 
