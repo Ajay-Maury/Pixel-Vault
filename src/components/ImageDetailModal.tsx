@@ -116,7 +116,7 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Scrollable wrapper for vertical layout */}
-        <div className={useSideLayout ? 'contents' : 'overflow-y-auto max-h-[92vh] flex flex-col'}>
+        <div className="overflow-y-auto max-h-[92vh] flex flex-col w-full">
           {/* Image side */}
           <div
             className={`bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ${
