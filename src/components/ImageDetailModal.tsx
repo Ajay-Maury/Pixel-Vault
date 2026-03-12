@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { X, Download, Copy, ExternalLink, Calendar, Maximize2, Tag, FileImage, Trash2, Pencil, Loader2, Lock, Globe } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +20,7 @@ interface Props {
 export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated }: Props) {
   const userId = getUserId();
   const isOwner = userId && image.user_id === userId;
+  const isMobile = useIsMobile();
 
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -30,21 +32,22 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
   const [keywords, setKeywords] = useState((image.keywords || []).join(", "));
   const [isPrivate, setIsPrivate] = useState(image.is_private !== false);
 
-  // Determine if image is portrait/landscape to optimize layout
   const isPortrait = image.height > image.width;
   const aspectRatio = image.width / image.height;
 
-  // Calculate optimal image panel size
+  // On mobile, always stack vertically
+  const useSideLayout = !isMobile && isPortrait;
+
   const imageStyle = useMemo(() => {
+    if (isMobile) {
+      return { width: '100%', aspectRatio: `${image.width}/${image.height}`, maxHeight: '50vh' };
+    }
     if (isPortrait) {
-      // Portrait: let height drive, cap at 85vh
-      const maxH = 85; // vh
-      const computedW = maxH * aspectRatio; // approximate vw-ish
+      const maxH = 85;
       return { maxHeight: `${maxH}vh`, width: 'auto', aspectRatio: `${image.width}/${image.height}` };
     }
-    // Landscape or square
     return { maxHeight: '80vh', width: '100%', aspectRatio: `${image.width}/${image.height}` };
-  }, [aspectRatio, isPortrait, image.width, image.height]);
+  }, [aspectRatio, isPortrait, image.width, image.height, isMobile]);
 
   function formatFileSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
@@ -108,26 +111,28 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
     >
       <div
         className={`bg-card border border-border rounded-2xl shadow-image max-h-[92vh] overflow-hidden flex animate-scale-in ${
-          isPortrait ? 'flex-row max-w-5xl w-auto' : 'flex-col max-w-5xl w-full'
+          useSideLayout ? 'flex-row max-w-5xl w-auto' : 'flex-col max-w-5xl w-full'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Image side */}
-        <div
-          className={`bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ${
-            isPortrait ? 'h-auto' : 'w-full'
-          }`}
-        >
-          <img
-            src={image.image_url}
-            alt={image.title}
-            className="object-contain block"
-            style={imageStyle}
-          />
-        </div>
+        {/* Scrollable wrapper for vertical layout */}
+        <div className={useSideLayout ? 'contents' : 'overflow-y-auto max-h-[92vh] flex flex-col'}>
+          {/* Image side */}
+          <div
+            className={`bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ${
+              useSideLayout ? 'h-auto' : 'w-full'
+            }`}
+          >
+            <img
+              src={image.image_url}
+              alt={image.title}
+              className="object-contain block"
+              style={imageStyle}
+            />
+          </div>
 
         {/* Info side */}
-        <div className={`flex flex-col overflow-y-auto ${isPortrait ? 'w-80 min-w-[280px] flex-shrink-0' : 'w-full'}`}>
+        <div className={`flex flex-col overflow-y-auto ${useSideLayout ? 'w-80 min-w-[280px] flex-shrink-0' : 'w-full'}`}>
           {/* Header */}
           <div className="flex items-start justify-between p-5 border-b border-border">
             <div className="flex-1 pr-3">
@@ -252,6 +257,7 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
               </>
             )}
           </div>
+        </div>
         </div>
       </div>
     </div>
