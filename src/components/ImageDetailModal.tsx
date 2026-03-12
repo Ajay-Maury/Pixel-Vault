@@ -258,6 +258,7 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
             )}
           </div>
         </div>
+        </div>
       </div>
     </div>
   );
