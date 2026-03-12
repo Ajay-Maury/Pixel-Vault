@@ -20,6 +20,7 @@ interface Props {
 export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated }: Props) {
   const userId = getUserId();
   const isOwner = userId && image.user_id === userId;
+  const isMobile = useIsMobile();
 
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -31,21 +32,22 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
   const [keywords, setKeywords] = useState((image.keywords || []).join(", "));
   const [isPrivate, setIsPrivate] = useState(image.is_private !== false);
 
-  // Determine if image is portrait/landscape to optimize layout
   const isPortrait = image.height > image.width;
   const aspectRatio = image.width / image.height;
 
-  // Calculate optimal image panel size
+  // On mobile, always stack vertically
+  const useSideLayout = !isMobile && isPortrait;
+
   const imageStyle = useMemo(() => {
+    if (isMobile) {
+      return { width: '100%', aspectRatio: `${image.width}/${image.height}`, maxHeight: '50vh' };
+    }
     if (isPortrait) {
-      // Portrait: let height drive, cap at 85vh
-      const maxH = 85; // vh
-      const computedW = maxH * aspectRatio; // approximate vw-ish
+      const maxH = 85;
       return { maxHeight: `${maxH}vh`, width: 'auto', aspectRatio: `${image.width}/${image.height}` };
     }
-    // Landscape or square
     return { maxHeight: '80vh', width: '100%', aspectRatio: `${image.width}/${image.height}` };
-  }, [aspectRatio, isPortrait, image.width, image.height]);
+  }, [aspectRatio, isPortrait, image.width, image.height, isMobile]);
 
   function formatFileSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
