@@ -132,7 +132,7 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
           </div>
 
         {/* Info side */}
-        <div className={`flex flex-col overflow-y-auto ${isPortrait ? 'w-80 min-w-[280px] flex-shrink-0' : 'w-full'}`}>
+        <div className={`flex flex-col overflow-y-auto ${useSideLayout ? 'w-80 min-w-[280px] flex-shrink-0' : 'w-full'}`}>
           {/* Header */}
           <div className="flex items-start justify-between p-5 border-b border-border">
             <div className="flex-1 pr-3">
