@@ -111,23 +111,25 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
     >
       <div
         className={`bg-card border border-border rounded-2xl shadow-image max-h-[92vh] overflow-hidden flex animate-scale-in ${
-          isPortrait ? 'flex-row max-w-5xl w-auto' : 'flex-col max-w-5xl w-full'
+          useSideLayout ? 'flex-row max-w-5xl w-auto' : 'flex-col max-w-5xl w-full'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Image side */}
-        <div
-          className={`bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ${
-            isPortrait ? 'h-auto' : 'w-full'
-          }`}
-        >
-          <img
-            src={image.image_url}
-            alt={image.title}
-            className="object-contain block"
-            style={imageStyle}
-          />
-        </div>
+        {/* Scrollable wrapper for vertical layout */}
+        <div className={useSideLayout ? 'contents' : 'overflow-y-auto max-h-[92vh] flex flex-col'}>
+          {/* Image side */}
+          <div
+            className={`bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ${
+              useSideLayout ? 'h-auto' : 'w-full'
+            }`}
+          >
+            <img
+              src={image.image_url}
+              alt={image.title}
+              className="object-contain block"
+              style={imageStyle}
+            />
+          </div>
 
         {/* Info side */}
         <div className={`flex flex-col overflow-y-auto ${isPortrait ? 'w-80 min-w-[280px] flex-shrink-0' : 'w-full'}`}>
