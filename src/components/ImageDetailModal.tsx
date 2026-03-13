@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { X, Download, Copy, ExternalLink, Calendar, Maximize2, Minimize2, Tag, FileImage, Trash2, Pencil, Loader2, Lock, Globe } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
