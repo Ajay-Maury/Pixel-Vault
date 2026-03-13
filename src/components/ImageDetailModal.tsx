@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { X, Download, Copy, ExternalLink, Calendar, Maximize2, Tag, FileImage, Trash2, Pencil, Loader2, Lock, Globe } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { X, Download, Copy, ExternalLink, Calendar, Maximize2, Minimize2, Tag, FileImage, Trash2, Pencil, Loader2, Lock, Globe } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   const [title, setTitle] = useState(image.title);
   const [description, setDescription] = useState(image.description || "");
@@ -33,21 +34,8 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
   const [isPrivate, setIsPrivate] = useState(image.is_private !== false);
 
   const isPortrait = image.height > image.width;
-  const aspectRatio = image.width / image.height;
-
-  // On mobile, always stack vertically
+  // Side-by-side when image is narrow (portrait) and not mobile
   const useSideLayout = !isMobile && isPortrait;
-
-  const imageStyle = useMemo(() => {
-    if (isMobile) {
-      return { width: '100%', aspectRatio: `${image.width}/${image.height}`, maxHeight: '50vh' };
-    }
-    if (isPortrait) {
-      const maxH = 85;
-      return { maxHeight: `${maxH}vh`, width: 'auto', aspectRatio: `${image.width}/${image.height}` };
-    }
-    return { maxHeight: '80vh', width: '100%', aspectRatio: `${image.width}/${image.height}` };
-  }, [aspectRatio, isPortrait, image.width, image.height, isMobile]);
 
   function formatFileSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
@@ -104,160 +92,265 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
     }
   }
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      if (fullscreen) setFullscreen(false);
+      else onClose();
+    }
+  }, [fullscreen, onClose]);
+
+  // ── Fullscreen View ──
+  if (fullscreen) {
+    return (
+      <div
+        className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-xl flex items-center justify-center cursor-zoom-out animate-fade-in"
+        onClick={() => setFullscreen(false)}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+      >
+        <img
+          src={image.image_url}
+          alt={image.title}
+          className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-image"
+        />
+        <div className="absolute top-4 right-4 flex gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+            className="bg-card/80 backdrop-blur-sm hover:bg-card text-foreground rounded-full h-10 w-10"
+          >
+            <Minimize2 className="w-5 h-5" />
+          </Button>
+        </div>
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card/80 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-muted-foreground">
+          Press <kbd className="font-mono text-foreground mx-1">Esc</kbd> or click to exit
+        </div>
+      </div>
+    );
+  }
+
+  // ── Detail Modal ──
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-navy/80 backdrop-blur-md animate-fade-in"
       onClick={onClose}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
     >
       <div
-        className={`bg-card border border-border rounded-2xl shadow-image max-h-[92vh] overflow-hidden flex animate-scale-in ${
-          useSideLayout ? 'flex-row max-w-5xl w-auto' : 'flex-col max-w-5xl w-full'
+        className={`bg-card border border-border rounded-2xl shadow-image max-h-[95vh] overflow-hidden flex animate-scale-in ${
+          useSideLayout ? 'flex-row max-w-5xl w-auto' : 'flex-col max-w-4xl w-full'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Scrollable wrapper for vertical layout */}
-        <div className="overflow-y-auto max-h-[92vh] flex flex-col w-full">
-          {/* Image side */}
+        {/* Single scrollable container */}
+        <div className={`overflow-y-auto max-h-[95vh] flex w-full ${useSideLayout ? 'flex-row' : 'flex-col'}`}>
+
+          {/* ── Title above image (stacked layout only) ── */}
+          {!useSideLayout && (
+            <div className="px-5 pt-4 pb-2 flex items-start justify-between">
+              <div className="flex-1 pr-3 min-w-0">
+                <h2 className="font-display text-lg sm:text-xl font-bold text-foreground leading-tight truncate">{image.title}</h2>
+                {image.description && !editing && (
+                  <p className="text-muted-foreground text-sm mt-1 leading-relaxed line-clamp-2">{image.description}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => setFullscreen(true)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Fullscreen"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Image ── */}
           <div
-            className={`bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ${
+            className={`relative group bg-muted/50 flex items-center justify-center overflow-hidden flex-shrink-0 ${
               useSideLayout ? 'h-auto' : 'w-full'
             }`}
           >
             <img
               src={image.image_url}
               alt={image.title}
-              className="object-contain block"
-              style={imageStyle}
+              className="object-contain block cursor-zoom-in"
+              style={
+                isMobile
+                  ? { width: '100%', aspectRatio: `${image.width}/${image.height}`, maxHeight: '55vh' }
+                  : isPortrait
+                    ? { maxHeight: '85vh', width: 'auto', aspectRatio: `${image.width}/${image.height}` }
+                    : { maxHeight: '70vh', width: '100%', aspectRatio: `${image.width}/${image.height}` }
+              }
+              onClick={() => setFullscreen(true)}
             />
+            {/* Fullscreen overlay hint */}
+            <div className="absolute inset-0 bg-navy/0 group-hover:bg-navy/10 transition-colors pointer-events-none flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-card/80 backdrop-blur-sm rounded-full p-2.5 pointer-events-none">
+                <Maximize2 className="w-5 h-5 text-foreground" />
+              </div>
+            </div>
           </div>
 
-        {/* Info side */}
-        <div className={`flex flex-col overflow-y-auto ${useSideLayout ? 'w-80 min-w-[280px] flex-shrink-0' : 'w-full'}`}>
-          {/* Header */}
-          <div className="flex items-start justify-between p-5 border-b border-border">
-            <div className="flex-1 pr-3">
-              {editing ? (
+          {/* ── Info Panel ── */}
+          <div className={`flex flex-col ${useSideLayout ? 'w-80 min-w-[280px] flex-shrink-0' : 'w-full'}`}>
+            {/* Header — side layout has its own title + close */}
+            {useSideLayout && (
+              <div className="flex items-start justify-between p-5 border-b border-border">
+                <div className="flex-1 pr-3 min-w-0">
+                  {editing ? (
+                    <EditForm
+                      title={title} setTitle={setTitle}
+                      description={description} setDescription={setDescription}
+                      keywords={keywords} setKeywords={setKeywords}
+                      isPrivate={isPrivate} setIsPrivate={setIsPrivate}
+                    />
+                  ) : (
+                    <>
+                      <h2 className="font-display text-xl font-bold text-foreground leading-tight">{image.title}</h2>
+                      {image.description && (
+                        <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">{image.description}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => setFullscreen(true)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Fullscreen"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Edit form for stacked layout */}
+            {!useSideLayout && editing && (
+              <div className="px-5 py-3 border-b border-border">
                 <EditForm
                   title={title} setTitle={setTitle}
                   description={description} setDescription={setDescription}
                   keywords={keywords} setKeywords={setKeywords}
                   isPrivate={isPrivate} setIsPrivate={setIsPrivate}
                 />
+              </div>
+            )}
+
+            {/* Metadata */}
+            <div className="p-5 flex-1 space-y-4">
+              <div className="grid grid-cols-2 gap-2.5">
+                <MetaStat icon={<Maximize2 className="w-3.5 h-3.5" />} label="Dimensions" value={`${image.width} × ${image.height}`} />
+                <MetaStat icon={<FileImage className="w-3.5 h-3.5" />} label="File size" value={formatFileSize(image.size)} />
+                {image.uploaded_at && (
+                  <MetaStat
+                    icon={<Calendar className="w-3.5 h-3.5" />}
+                    label="Uploaded"
+                    value={new Date(image.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  />
+                )}
+              </div>
+
+              {!editing && image.keywords && image.keywords.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
+                    <Tag className="w-3 h-3" />
+                    Keywords
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {image.keywords.map((kw, i) => (
+                      <span key={i} className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs border border-border">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">Image URL</div>
+                <div className="flex items-center gap-2 bg-muted rounded-lg p-2.5 border border-border">
+                  <span className="text-muted-foreground text-xs truncate flex-1">{image.image_url}</span>
+                  <button onClick={copyUrl} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Delete confirmation */}
+            {confirmDelete && (
+              <div className="px-5 pb-3">
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center justify-between">
+                  <span className="text-destructive text-sm font-medium">Delete?</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)} className="h-7 text-xs border-border">Cancel</Button>
+                    <Button size="sm" onClick={handleDelete} disabled={deleting} className="h-7 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : "Delete"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="p-5 border-t border-border flex gap-2 flex-wrap">
+              {editing ? (
+                <>
+                  <Button onClick={() => setEditing(false)} variant="outline" className="flex-1 border-border text-foreground hover:bg-muted">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSave} disabled={saving} className="flex-1 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                  </Button>
+                </>
               ) : (
                 <>
-                  <h2 className="font-display text-xl font-bold text-foreground leading-tight">{image.title}</h2>
-                  {image.description && (
-                    <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">{image.description}</p>
+                  <Button onClick={copyUrl} variant="outline" className="flex-1 border-border text-foreground hover:bg-muted gap-2">
+                    <Copy className="w-4 h-4" />
+                    Copy URL
+                  </Button>
+                  <a href={image.image_url} target="_blank" rel="noopener noreferrer" className="flex-1">
+                    <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      Open
+                    </Button>
+                  </a>
+                  <a href={image.image_url} download>
+                    <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </a>
+                  {isOwner && (
+                    <>
+                      <Button onClick={() => setEditing(true)} variant="outline" className="border-border text-foreground hover:bg-muted gap-2">
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button onClick={() => setConfirmDelete(true)} variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10 gap-2">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
                   )}
                 </>
               )}
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
-
-          {/* Metadata */}
-          <div className="p-5 flex-1 space-y-4">
-            <div className="grid grid-cols-2 gap-2.5">
-              <MetaStat icon={<Maximize2 className="w-3.5 h-3.5" />} label="Dimensions" value={`${image.width} × ${image.height}`} />
-              <MetaStat icon={<FileImage className="w-3.5 h-3.5" />} label="File size" value={formatFileSize(image.size)} />
-              {image.uploaded_at && (
-                <MetaStat
-                  icon={<Calendar className="w-3.5 h-3.5" />}
-                  label="Uploaded"
-                  value={new Date(image.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                />
-              )}
-            </div>
-
-            {!editing && image.keywords && image.keywords.length > 0 && (
-              <div>
-                <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
-                  <Tag className="w-3 h-3" />
-                  Keywords
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {image.keywords.map((kw, i) => (
-                    <span key={i} className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs border border-border">
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">Image URL</div>
-              <div className="flex items-center gap-2 bg-muted rounded-lg p-2.5 border border-border">
-                <span className="text-muted-foreground text-xs truncate flex-1">{image.image_url}</span>
-                <button onClick={copyUrl} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Delete confirmation */}
-          {confirmDelete && (
-            <div className="px-5 pb-3">
-              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center justify-between">
-                <span className="text-destructive text-sm font-medium">Delete?</span>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)} className="h-7 text-xs border-border">Cancel</Button>
-                  <Button size="sm" onClick={handleDelete} disabled={deleting} className="h-7 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : "Delete"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="p-5 border-t border-border flex gap-2 flex-wrap">
-            {editing ? (
-              <>
-                <Button onClick={() => setEditing(false)} variant="outline" className="flex-1 border-border text-foreground hover:bg-muted">
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={saving} className="flex-1 bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button onClick={copyUrl} variant="outline" className="flex-1 border-border text-foreground hover:bg-muted gap-2">
-                  <Copy className="w-4 h-4" />
-                  Copy URL
-                </Button>
-                <a href={image.image_url} target="_blank" rel="noopener noreferrer" className="flex-1">
-                  <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted gap-2">
-                    <ExternalLink className="w-4 h-4" />
-                    Open
-                  </Button>
-                </a>
-                <a href={image.image_url} download>
-                  <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
-                    <Download className="w-4 h-4" />
-                  </Button>
-                </a>
-                {isOwner && (
-                  <>
-                    <Button onClick={() => setEditing(true)} variant="outline" className="border-border text-foreground hover:bg-muted gap-2">
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button onClick={() => setConfirmDelete(true)} variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10 gap-2">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
         </div>
       </div>
     </div>
