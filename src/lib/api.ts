@@ -141,6 +141,28 @@ export async function uploadImagesBatch(files: File[]): Promise<{ uploads: Cloud
   return res.data;
 }
 
+/**
+ * Upload a single image with progress reporting. Used for per-file status
+ * tracking, retry support, and partial-failure handling in batch uploads.
+ */
+export async function uploadSingleImage(
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<CloudinaryUpload> {
+  const formData = new FormData();
+  formData.append("images", file);
+  const res = await api.post(`/image/minio-upload`, formData, {
+    onUploadProgress: (e) => {
+      if (!onProgress) return;
+      const total = e.total ?? file.size;
+      if (total > 0) onProgress(Math.min(100, Math.round((e.loaded / total) * 100)));
+    },
+  });
+  const upload = res.data?.uploads?.[0];
+  if (!upload) throw new Error("Upload failed: empty response");
+  return upload as CloudinaryUpload;
+}
+
 export async function saveImage(data: {
   title: string;
   description: string;
