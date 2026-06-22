@@ -260,7 +260,7 @@ function MyLibrary({
       <div className="flex gap-2">
         {(["all", "public", "private"] as const).map((tab) => {
           const icons = { all: <Images className="w-3.5 h-3.5" />, public: <Globe className="w-3.5 h-3.5" />, private: <Lock className="w-3.5 h-3.5" /> };
-          const counts = { all: myImages.length, public: publicCount, private: privateCount };
+          const counts = { all: computedAll, public: computedPublic, private: computedPrivate };
           const labels = { all: "All", public: "Public", private: "Private" };
           return (
             <button
