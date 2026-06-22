@@ -17,6 +17,8 @@ const LIMIT = 12;
 function useImageFetch(query: string, page: number, authed: boolean, myLibrary: boolean = false) {
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [privateCount, setPrivateCount] = useState(0);
+  const [publicCount, setPublicCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const fetchImages = useCallback(async () => {
@@ -26,6 +28,8 @@ function useImageFetch(query: string, page: number, authed: boolean, myLibrary: 
       const result = await searchImages(query, LIMIT, page * LIMIT, myLibrary);
       setImages(result.data || []);
       setTotalCount(result.totalCount || 0);
+      setPrivateCount(result.privateCount ?? 0);
+      setPublicCount(result.publicCount ?? 0);
     } catch {
       toast.error("Failed to load images");
     } finally {
@@ -35,7 +39,7 @@ function useImageFetch(query: string, page: number, authed: boolean, myLibrary: 
 
   useEffect(() => { fetchImages(); }, [fetchImages]);
 
-  return { images, totalCount, loading, refetch: fetchImages };
+  return { images, totalCount, privateCount, publicCount, loading, refetch: fetchImages };
 }
 
 function Pagination({ page, totalPages, setPage }: {
