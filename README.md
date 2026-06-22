@@ -158,9 +158,9 @@ Open [http://localhost:5173](http://localhost:5173).
 | PUT | `/user/change-password` | Change Password |
 | GET | `/user/profile` | Get Logged-in user profile |
 | PUT | `/user/profile` | Update user profile |
-| POST | `/image/search` | Search images (title/keywords) |
-| POST | `/image/minio-upload` | Upload image file |
-| POST | `/image/save` | Save image metadata |
+| POST | `/image/search` | Search images (title/keywords). Returns `{ data, totalCount, privateCount, publicCount }` — counts reflect the full matched set, not the current page |
+| POST | `/image/minio-upload` | Upload up to 30 image files (`images` field, `multipart/form-data`) |
+| POST | `/image/save` | Save metadata for one (`imageUrl`) or many (`imageUrls[]`) uploaded images |
 | PUT | `/image/:id` | Update image (title, description, keywords, privacy) |
 | DELETE | `/image/:id` | Delete an image |
 
