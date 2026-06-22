@@ -41,6 +41,8 @@ export interface ImageRecord {
 export interface SearchResponse {
   data: ImageRecord[];
   totalCount: number;
+  privateCount?: number;
+  publicCount?: number;
 }
 
 export interface ProfileRecord {
