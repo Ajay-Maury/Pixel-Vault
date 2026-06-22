@@ -219,10 +219,11 @@ function MyLibrary({
     return () => clearTimeout(t);
   }, [query]);
 
-  const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed, myLibrary);
+  const { images: allImages, totalCount, privateCount, publicCount, loading } = useImageFetch(debouncedQuery, page, authed, myLibrary);
 
-  // Filter to only show the logged-in user's images
-  const myImages = allImages.filter((img) => img.user_id === userId);
+  // Backend already scopes to the authenticated user when myLibrary=true; keep
+  // a defensive client filter as a safety net.
+  const myImages = allImages.filter((img) => !userId || img.user_id === userId);
 
   const images = myImages.filter((img) => {
     if (privacyTab === "public") return !img.is_private;
@@ -230,8 +231,12 @@ function MyLibrary({
     return true;
   });
 
-  const publicCount = myImages.filter((img) => !img.is_private).length;
-  const privateCount = myImages.filter((img) => img.is_private !== false).length;
+  // Counts come from the API (full result set, unaffected by pagination).
+  // Fall back to client-side counts only if the API didn't return them.
+  const apiHasCounts = privateCount > 0 || publicCount > 0 || totalCount > 0;
+  const computedPublic = apiHasCounts ? publicCount : myImages.filter((img) => !img.is_private).length;
+  const computedPrivate = apiHasCounts ? privateCount : myImages.filter((img) => img.is_private !== false).length;
+  const computedAll = apiHasCounts ? totalCount : myImages.length;
 
   const totalPages = Math.ceil(totalCount / LIMIT);
 
