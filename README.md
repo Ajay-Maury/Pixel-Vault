@@ -27,12 +27,17 @@ A modern web application for uploading, managing, and sharing digital images. Bu
 
 ---
 
-### 🖼️ Image Upload
-- Drag-and-drop or file picker upload
-- Client-side validation (type, size)
-- Image preview before upload
-- Metadata extraction (dimensions, file size)
-- Title, description, keywords, and privacy (public/private) settings
+### 🖼️ Image Upload (Batch)
+- Drag-and-drop or file picker — upload **up to 30 images** at once (5MB max per file)
+- Client-side validation (MIME type, file size, count)
+- Thumbnail grid with auto-extracted dimensions and per-file size
+- **Per-file status badges**: queued / uploading / success / failed
+- **Per-file upload progress** plus an overall progress bar
+- **Partial-failure handling**: successful uploads are preserved even if some files fail
+- **Retry** controls — retry a single failed upload or all failed uploads at once
+- Bounded concurrency (3 parallel uploads) for responsive UX on slow networks
+- **Grid selection & reordering**: include/exclude individual uploaded images and reorder them with ← / → controls before saving — ordered numbering badges show the final save order
+- Shared metadata (title, description, keywords, privacy) applied to every saved image
 - Cloud storage via Cloudinary
 
     <img width="1012" height="800" alt="Upload-Image" src="https://github.com/user-attachments/assets/180441b4-a612-48a8-837b-028fe2bb4fd3" />
@@ -42,7 +47,8 @@ A modern web application for uploading, managing, and sharing digital images. Bu
 ### 🎨 Gallery
 - Two grid modes: masonry and uniform grid
 - Full-text search by title or keywords
-- Pagination with page navigation
+- Pagination with page navigation — pagination only affects the returned data, **not the counts**
+- My Library tab shows accurate `All / Public / Private` counts driven by the API's `totalCount`, `publicCount`, and `privateCount` for the current search and scope
 - Privacy badges (🔒 Private / 🌐 Public) on library cards
 - ---
 - **Public Gallery** — browse all public images shared by users
