@@ -17,6 +17,8 @@ const LIMIT = 12;
 function useImageFetch(query: string, page: number, authed: boolean, myLibrary: boolean = false) {
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [privateCount, setPrivateCount] = useState(0);
+  const [publicCount, setPublicCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const fetchImages = useCallback(async () => {
@@ -26,6 +28,8 @@ function useImageFetch(query: string, page: number, authed: boolean, myLibrary: 
       const result = await searchImages(query, LIMIT, page * LIMIT, myLibrary);
       setImages(result.data || []);
       setTotalCount(result.totalCount || 0);
+      setPrivateCount(result.privateCount ?? 0);
+      setPublicCount(result.publicCount ?? 0);
     } catch {
       toast.error("Failed to load images");
     } finally {
@@ -35,7 +39,7 @@ function useImageFetch(query: string, page: number, authed: boolean, myLibrary: 
 
   useEffect(() => { fetchImages(); }, [fetchImages]);
 
-  return { images, totalCount, loading, refetch: fetchImages };
+  return { images, totalCount, privateCount, publicCount, loading, refetch: fetchImages };
 }
 
 function Pagination({ page, totalPages, setPage }: {
@@ -215,10 +219,11 @@ function MyLibrary({
     return () => clearTimeout(t);
   }, [query]);
 
-  const { images: allImages, totalCount, loading } = useImageFetch(debouncedQuery, page, authed, myLibrary);
+  const { images: allImages, totalCount, privateCount, publicCount, loading } = useImageFetch(debouncedQuery, page, authed, myLibrary);
 
-  // Filter to only show the logged-in user's images
-  const myImages = allImages.filter((img) => img.user_id === userId);
+  // Backend already scopes to the authenticated user when myLibrary=true; keep
+  // a defensive client filter as a safety net.
+  const myImages = allImages.filter((img) => !userId || img.user_id === userId);
 
   const images = myImages.filter((img) => {
     if (privacyTab === "public") return !img.is_private;
@@ -226,8 +231,12 @@ function MyLibrary({
     return true;
   });
 
-  const publicCount = myImages.filter((img) => !img.is_private).length;
-  const privateCount = myImages.filter((img) => img.is_private !== false).length;
+  // Counts come from the API (full result set, unaffected by pagination).
+  // Fall back to client-side counts only if the API didn't return them.
+  const apiHasCounts = privateCount > 0 || publicCount > 0 || totalCount > 0;
+  const computedPublic = apiHasCounts ? publicCount : myImages.filter((img) => !img.is_private).length;
+  const computedPrivate = apiHasCounts ? privateCount : myImages.filter((img) => img.is_private !== false).length;
+  const computedAll = apiHasCounts ? totalCount : myImages.length;
 
   const totalPages = Math.ceil(totalCount / LIMIT);
 
@@ -251,7 +260,7 @@ function MyLibrary({
       <div className="flex gap-2">
         {(["all", "public", "private"] as const).map((tab) => {
           const icons = { all: <Images className="w-3.5 h-3.5" />, public: <Globe className="w-3.5 h-3.5" />, private: <Lock className="w-3.5 h-3.5" /> };
-          const counts = { all: myImages.length, public: publicCount, private: privateCount };
+          const counts = { all: computedAll, public: computedPublic, private: computedPrivate };
           const labels = { all: "All", public: "Public", private: "Private" };
           return (
             <button

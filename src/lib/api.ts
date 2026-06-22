@@ -41,6 +41,8 @@ export interface ImageRecord {
 export interface SearchResponse {
   data: ImageRecord[];
   totalCount: number;
+  privateCount?: number;
+  publicCount?: number;
 }
 
 export interface ProfileRecord {
@@ -116,11 +118,49 @@ export async function searchImages(
   return res.data as SearchResponse;
 }
 
+export interface CloudinaryUpload {
+  secure_url: string;
+  url?: string;
+  width: number;
+  height: number;
+  size: number;
+  originalName?: string;
+}
+
 export async function uploadToCloudinary(file: File): Promise<any> {
   const formData = new FormData();
   formData.append("image", file);
   const res = await api.post(`/image/minio-upload`, formData);
   return res.data;
+}
+
+export async function uploadImagesBatch(files: File[]): Promise<{ uploads: CloudinaryUpload[] }> {
+  const formData = new FormData();
+  files.forEach((f) => formData.append("images", f));
+  const res = await api.post(`/image/minio-upload`, formData);
+  return res.data;
+}
+
+/**
+ * Upload a single image with progress reporting. Used for per-file status
+ * tracking, retry support, and partial-failure handling in batch uploads.
+ */
+export async function uploadSingleImage(
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<CloudinaryUpload> {
+  const formData = new FormData();
+  formData.append("images", file);
+  const res = await api.post(`/image/minio-upload`, formData, {
+    onUploadProgress: (e) => {
+      if (!onProgress) return;
+      const total = e.total ?? file.size;
+      if (total > 0) onProgress(Math.min(100, Math.round((e.loaded / total) * 100)));
+    },
+  });
+  const upload = res.data?.uploads?.[0];
+  if (!upload) throw new Error("Upload failed: empty response");
+  return upload as CloudinaryUpload;
 }
 
 export async function saveImage(data: {
@@ -132,6 +172,17 @@ export async function saveImage(data: {
   imageUrl: string;
   size: number;
   isPrivate?: boolean;
+}): Promise<any> {
+  const res = await api.post(`/image/save`, data);
+  return res.data;
+}
+
+export async function saveImagesBatch(data: {
+  title: string;
+  description: string;
+  keywords: string;
+  isPrivate?: boolean;
+  imageUrls: { imageUrl: string; width: number; height: number; size: number }[];
 }): Promise<any> {
   const res = await api.post(`/image/save`, data);
   return res.data;
