@@ -74,8 +74,21 @@ A modern web application for uploading, managing, and sharing digital images. Bu
 - Edit title, description, and keywords inline
 - Toggle privacy between public and private
 - Delete images with confirmation dialog
+- **Bulk actions in My Library**: select multiple images, then make Public/Private, add to a Share Group, or Delete in one click
 
   <img width="1168" height="800" alt="Edit-Image" src="https://github.com/user-attachments/assets/3b0b1e97-b38f-4f30-8b69-6bc268b1e5f0" />
+
+---
+### 👥 Share Groups
+- Create private share groups (group name max 10 chars, unique per owner)
+- Invite users by typing a name or email — autocomplete shows registered users; raw emails also work for not-yet-registered invitees
+- Members see invites in their **Invites** tab and can Accept / Reject
+- Owners can add or remove any of their owned images (public or private) from any group
+- Owners can rename or delete groups and remove members at any time
+- Members can browse and download shared images (downloads are audited)
+- Pending-invite badge on the Groups nav link keeps you up to date
+- **Owner analytics**: per-group download summary + paginated download history showing who downloaded what and when
+
 
 ---
 ### 👤 Profile Page
@@ -158,11 +171,31 @@ Open [http://localhost:5173](http://localhost:5173).
 | PUT | `/user/change-password` | Change Password |
 | GET | `/user/profile` | Get Logged-in user profile |
 | PUT | `/user/profile` | Update user profile |
-| POST | `/image/search` | Search images (title/keywords). Returns `{ data, totalCount, privateCount, publicCount }` — counts reflect the full matched set, not the current page |
+| GET | `/user/search?email=&limit=` | Search registered users (for invites/autocomplete) |
+| POST | `/image/search` | Search images. Returns `{ data, totalCount, privateCount, publicCount }` — counts reflect the full matched set, not the current page |
 | POST | `/image/minio-upload` | Upload up to 30 image files (`images` field, `multipart/form-data`) |
 | POST | `/image/save` | Save metadata for one (`imageUrl`) or many (`imageUrls[]`) uploaded images |
+| POST | `/image/bulk/privacy` | Bulk update privacy (`{ imageIds[], isPrivate }`) for up to 100 owned images |
+| POST | `/image/bulk/delete` | Bulk delete (`{ imageIds[] }`) for up to 100 owned images |
 | PUT | `/image/:id` | Update image (title, description, keywords, privacy) |
 | DELETE | `/image/:id` | Delete an image |
+| POST | `/share-groups` | Create a share group (`{ name }`, max 10 chars, unique per owner) |
+| GET | `/share-groups/my-owned` | List groups owned by the authenticated user |
+| GET | `/share-groups/my-joined` | List groups the user is an accepted member of |
+| GET | `/share-groups/my-invites?status=pending` | List the user's invites |
+| GET | `/share-groups/:id` | Get group details (owner or accepted member) |
+| PUT | `/share-groups/:id` | Rename a group (owner) |
+| DELETE | `/share-groups/:id` | Delete a group (owner) |
+| POST | `/share-groups/:id/invite` | Invite users by email (`{ emails[] }`) |
+| POST | `/share-groups/invites/:memberId/accept` | Accept an invite |
+| POST | `/share-groups/invites/:memberId/reject` | Reject an invite |
+| DELETE | `/share-groups/:id/members/:memberId` | Remove a member or pending invite (owner) |
+| POST | `/share-groups/:id/images/add` | Add owned images (`{ imageIds[] }`) to the group |
+| POST | `/share-groups/:id/images/remove` | Remove images (`{ imageIds[] }`) from the group |
+| GET | `/share-groups/:id/images` | List shared images (search, sort, paginate; counts reflect full matched set) |
+| POST | `/share-groups/:id/images/:imageId/download` | Record a download and return the download URL |
+| GET | `/share-groups/:id/downloads/summary` | Owner-only download analytics summary |
+| GET | `/share-groups/:id/downloads?limit=&offset=` | Owner-only paginated download audit history |
 
 All `/image/*` and `/user/*` (instead of register and login) all endpoints require `Authorization: Bearer <token>` header.
 
@@ -185,7 +218,9 @@ src/
 │   └── utils.ts
 ├── pages/
 │   ├── Index.tsx           # Landing / home page
-│   ├── Gallery.tsx         # Public gallery + My Library
+│   ├── Gallery.tsx         # Public gallery + My Library (with bulk actions)
+│   ├── Groups.tsx          # Share Groups list (owned / joined / invites)
+│   ├── GroupDetail.tsx     # Group images, members, owner analytics
 │   ├── Login.tsx
 │   ├── Register.tsx
 │   ├── Upload.tsx
