@@ -67,6 +67,7 @@ export interface ShareGroup {
   id: string;
   name: string;
   ownerId?: string;
+  isOwner?: boolean;
   memberCount?: number;
   imageCount?: number;
   createdAt?: string;
@@ -90,9 +91,16 @@ export interface GroupInvite {
   group: { id: string; name: string; ownerEmail?: string };
 }
 
+export interface GroupImageItem {
+  id: string;
+  addedAt: string;
+  addedBy: { id: string; email: string; firstName?: string; lastName?: string };
+  image: ImageRecord;
+}
+
 export interface GroupImagesResponse {
   group: { id: string; name: string };
-  data: ImageRecord[];
+  data: GroupImageItem[];
   totalCount: number;
   privateCount?: number;
   publicCount?: number;
@@ -317,7 +325,23 @@ export async function listMyInvites(status?: InviteStatus): Promise<GroupInvite[
 
 export async function getGroup(id: string): Promise<ShareGroup & { members?: GroupMember[] }> {
   const res = await api.get(`/share-groups/${id}`);
-  return (res.data?.data ?? res.data) as ShareGroup & { members?: GroupMember[] };
+  const payload = res.data?.data ?? res.data;
+
+  if (payload?.group) {
+    const groupPayload = payload.group;
+    const members = Array.isArray(payload.members)
+      ? payload.members
+      : Array.isArray(groupPayload?.members)
+        ? groupPayload.members
+        : undefined;
+    return {
+      ...payload,
+      ...groupPayload,
+      members,
+    } as ShareGroup & { members?: GroupMember[] };
+  }
+
+  return payload as ShareGroup & { members?: GroupMember[] };
 }
 
 export async function inviteToGroup(id: string, emails: string[]): Promise<any> {

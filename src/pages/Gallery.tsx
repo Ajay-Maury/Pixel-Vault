@@ -54,6 +54,25 @@ function useImageFetch(query: string, page: number, authed: boolean, myLibrary: 
   return { images, totalCount, privateCount, publicCount, loading, refetch: fetchImages };
 }
 
+async function downloadImage(url: string, filename: string) {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("Download failed");
+    const blob = await resp.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename || "image";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+    toast.success("Download started");
+  } catch {
+    window.open(url, "_blank");
+  }
+}
+
 function Pagination({ page, totalPages, setPage }: { page: number; totalPages: number; setPage: (p: number) => void; }) {
   if (totalPages <= 1) return null;
   return (
@@ -643,10 +662,16 @@ function ImageCard({ image, masonry, index, onClick, showPrivacyBadge, selection
                 className="p-1.5 rounded-md bg-card/80 hover:bg-card text-foreground transition-colors">
                 <Eye className="w-3 h-3" />
               </a>
-              <a href={image.image_url} download onClick={(e) => e.stopPropagation()}
-                className="p-1.5 rounded-md bg-card/80 hover:bg-card text-foreground transition-colors">
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await downloadImage(image.image_url, image.title || "image");
+                }}
+                className="p-1.5 rounded-md bg-card/80 hover:bg-card text-foreground transition-colors"
+              >
                 <Download className="w-3 h-3" />
-              </a>
+              </button>
             </div>
           </div>
         </>

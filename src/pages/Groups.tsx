@@ -24,13 +24,22 @@ import { toast } from "sonner";
 
 const NAME_MAX = 10;
 
-function statusBadge(status: InviteStatus) {
-  const map: Record<InviteStatus, { cls: string; icon: JSX.Element; label: string }> = {
+function normalizeStatus(status: InviteStatus | string | undefined) {
+  return String(status ?? "").trim().toLowerCase();
+}
+
+function statusBadge(status: InviteStatus | string | undefined) {
+  const normalized = normalizeStatus(status);
+  const map: Record<string, { cls: string; icon: JSX.Element; label: string }> = {
     pending:  { cls: "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400", icon: <Clock className="w-3 h-3" />, label: "Pending" },
     accepted: { cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400", icon: <UserCheck className="w-3 h-3" />, label: "Accepted" },
     rejected: { cls: "bg-destructive/10 text-destructive border-destructive/30", icon: <ShieldX className="w-3 h-3" />, label: "Rejected" },
   };
-  const s = map[status];
+  const s = map[normalized] ?? {
+    cls: "bg-muted text-muted-foreground border-border",
+    icon: <Mail className="w-3 h-3" />,
+    label: normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : "Unknown",
+  };
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${s.cls}`}>
       {s.icon}{s.label}
@@ -149,7 +158,7 @@ export default function Groups() {
     }
   }
 
-  const pendingCount = invites.filter((i) => i.status === "pending").length;
+  const pendingCount = invites.filter((i) => normalizeStatus(i.status) === "pending").length;
 
   if (!authed) {
     return (
@@ -254,7 +263,7 @@ export default function Groups() {
                       </div>
                     </div>
                   </div>
-                  {inv.status === "pending" ? (
+                  {normalizeStatus(inv.status) === "pending" ? (
                     <div className="flex gap-2 flex-shrink-0">
                       <Button
                         size="sm" variant="outline"
@@ -272,7 +281,7 @@ export default function Groups() {
                         Accept
                       </Button>
                     </div>
-                  ) : inv.status === "accepted" ? (
+                  ) : normalizeStatus(inv.status) === "accepted" ? (
                     <Link to={`/groups/${inv.group.id}`}>
                       <Button size="sm" variant="outline" className="border-border gap-1.5">
                         Open <ArrowRight className="w-3.5 h-3.5" />

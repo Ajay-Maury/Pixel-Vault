@@ -18,7 +18,7 @@ import {
   getGroup, getGroupImages, addImagesToGroup, removeImagesFromGroup,
   inviteToGroup, removeGroupMember, recordGroupDownload, renameGroup,
   getGroupDownloadsSummary, listGroupDownloads, searchUsers, searchImages,
-  ShareGroup, GroupMember, ImageRecord, DownloadRecord, DownloadsSummary, UserLite,
+  ShareGroup, GroupMember, ImageRecord, DownloadRecord, DownloadsSummary, UserLite, GroupImageItem,
 } from "@/lib/api";
 import { getUserId } from "@/lib/auth";
 import { toast } from "sonner";
@@ -41,8 +41,7 @@ export default function GroupDetail() {
   const [group, setGroup] = useState<(ShareGroup & { members?: GroupMember[] }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
-
-  const isOwner = group?.ownerId ? group.ownerId === userId : group?.role === "owner";
+  const isOwner = group?.ownerId ? group.ownerId === userId : group?.role === "owner" || group?.isOwner === true;
 
   const refreshGroup = useCallback(async () => {
     if (!id) return;
@@ -117,8 +116,9 @@ export default function GroupDetail() {
 function GroupHeader({ group, isOwner, onRenamed, onDeleted }: {
   group: ShareGroup; isOwner: boolean; onRenamed: () => void; onDeleted: () => void;
 }) {
+
   const [renameOpen, setRenameOpen] = useState(false);
-  const [name, setName] = useState(group.name);
+  const [name, setName] = useState(group?.name || "");
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -201,7 +201,7 @@ function GroupHeader({ group, isOwner, onRenamed, onDeleted }: {
 
 // ── Images Tab ──
 function ImagesTab({ groupId, isOwner }: { groupId: string; isOwner: boolean }) {
-  const [items, setItems] = useState<ImageRecord[]>([]);
+  const [items, setItems] = useState<GroupImageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -251,18 +251,39 @@ function ImagesTab({ groupId, isOwner }: { groupId: string; isOwner: boolean }) 
     finally { setRemoving(false); }
   }
 
-  async function handleDownload(img: ImageRecord) {
-    setDownloading(img.id);
+  async function downloadUrl(url: string, filename: string) {
     try {
-      const r = await recordGroupDownload(groupId, img.id);
-      const url = r.downloadUrl || r.url || img.image_url;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Network response was not ok");
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = img.title || "image"; a.target = "_blank";
+      a.href = objectUrl;
+      a.download = filename;
+      a.target = "_blank";
       a.rel = "noopener noreferrer";
-      document.body.appendChild(a); a.click(); a.remove();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(url, "_blank");
+    }
+  }
+
+  async function handleDownload(groupImg: GroupImageItem) {
+    setDownloading(groupImg.id);
+    try {
+      const r = await recordGroupDownload(groupId, groupImg.image.id);
+      const url = r.downloadUrl || r.url || groupImg.image.image_url;
+      if (!url) throw new Error("Missing download URL");
+      await downloadUrl(url, groupImg.image.title || "image");
       toast.success("Download started");
-    } catch (e: any) { toast.error(e?.response?.data?.message || "Failed to download"); }
-    finally { setDownloading(null); }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Failed to download");
+    } finally {
+      setDownloading(null);
+    }
   }
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -304,35 +325,38 @@ function ImagesTab({ groupId, isOwner }: { groupId: string; isOwner: boolean }) 
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {items.map((img) => (
-            <div key={img.id} className="group relative bg-card border border-border rounded-xl overflow-hidden shadow-card hover:shadow-image transition-all">
-              {isOwner && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); toggle(img.id); }}
-                  className="absolute top-2 left-2 z-10 w-6 h-6 rounded-md bg-card/90 border border-border flex items-center justify-center"
-                  aria-label="Select"
-                >
-                  <Checkbox checked={selected.has(img.id)} className="pointer-events-none" />
-                </button>
-              )}
-              <button onClick={() => setOpenImage(img)} className="block w-full aspect-square overflow-hidden">
-                <img src={img.image_url} alt={img.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-              </button>
-              <div className="p-2.5">
-                <div className="text-sm font-medium text-foreground truncate">{img.title}</div>
-                <div className="mt-1.5 flex justify-end">
+          {items.map((groupImg) => {
+            const img = groupImg.image;
+            return (
+              <div key={groupImg.id} className="group relative bg-card border border-border rounded-xl overflow-hidden shadow-card hover:shadow-image transition-all">
+                {isOwner && (
                   <button
-                    onClick={() => handleDownload(img)}
-                    disabled={downloading === img.id}
-                    className="p-1.5 rounded-md bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                    title="Download"
+                    onClick={(e) => { e.stopPropagation(); toggle(groupImg.id); }}
+                    className="absolute top-2 left-2 z-10 w-6 h-6 rounded-md bg-card/90 border border-border flex items-center justify-center"
+                    aria-label="Select"
                   >
-                    {downloading === img.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    <Checkbox checked={selected.has(groupImg.id)} className="pointer-events-none" />
                   </button>
+                )}
+                <button onClick={() => setOpenImage(img)} className="block w-full aspect-square overflow-hidden">
+                  <img src={img.image_url} alt={img.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                </button>
+                <div className="p-2.5">
+                  <div className="text-sm font-medium text-foreground truncate">{img.title}</div>
+                  <div className="mt-1.5 flex justify-end">
+                    <button
+                      onClick={() => handleDownload(groupImg)}
+                      disabled={downloading === groupImg.id}
+                      className="p-1.5 rounded-md bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                      title="Download"
+                    >
+                      {downloading === groupImg.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -352,7 +376,6 @@ function ImagesTab({ groupId, isOwner }: { groupId: string; isOwner: boolean }) 
         <ImageDetailModal
           image={openImage}
           onClose={() => setOpenImage(null)}
-          groupContext={{ groupId, canEdit: false, onDownload: () => handleDownload(openImage) }}
         />
       )}
     </div>
@@ -722,8 +745,8 @@ function AnalyticsTab({ groupId }: { groupId: string }) {
               <tbody>
                 {downloads.map((d) => (
                   <tr key={d.id} className="border-t border-border">
-                    <td className="px-4 py-2.5 text-foreground">{d.userEmail || d.userId || "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{d.imageTitle || d.imageId}</td>
+                    <td className="px-4 py-2.5 text-foreground">{`${d.downloader?.firstName} ${d.downloader?.lastName}` || "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{d.image?.title || "—"}</td>
                     <td className="px-4 py-2.5 text-right text-muted-foreground">
                       {new Date(d.downloadedAt).toLocaleString()}
                     </td>
