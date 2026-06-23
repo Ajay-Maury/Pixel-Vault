@@ -15,11 +15,16 @@ interface Props {
   onClose: () => void;
   onDeleted?: (id: string) => void;
   onUpdated?: (image: ImageRecord) => void;
+  groupContext?: {
+    groupId: string;
+    canEdit?: boolean;
+    onDownload?: () => void | Promise<void>;
+  };
 }
 
-export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated }: Props) {
+export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated, groupContext }: Props) {
   const userId = getUserId();
-  const isOwner = userId && image.user_id === userId;
+  const isOwner = !groupContext && userId && image.user_id === userId;
   const isMobile = useIsMobile();
 
   // Lock body scroll when modal is open
@@ -350,11 +355,17 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated 
                       Open
                     </Button>
                   </a>
-                  <a href={image.image_url} download>
-                    <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+                  {groupContext?.onDownload ? (
+                    <Button onClick={() => groupContext.onDownload?.()} className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
                       <Download className="w-4 h-4" />
                     </Button>
-                  </a>
+                  ) : (
+                    <a href={image.image_url} download>
+                      <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </a>
+                  )}
                   {isOwner && (
                     <>
                       <Button onClick={() => setEditing(true)} variant="outline" className="border-border text-foreground hover:bg-muted gap-2">

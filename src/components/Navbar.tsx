@@ -1,16 +1,28 @@
 import { Link, useLocation } from "react-router-dom";
-import { Camera, Upload, LogIn, UserPlus, Search, UserCircle, Sun, Moon } from "lucide-react";
+import { Camera, Upload, LogIn, UserPlus, Search, UserCircle, Sun, Moon, Users } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
+import { useEffect, useState } from "react";
+import { listMyInvites } from "@/lib/api";
 
 export default function Navbar() {
   const location = useLocation();
   const authed = isAuthenticated();
   const { theme, toggleTheme } = useTheme();
+  const [pendingInvites, setPendingInvites] = useState(0);
+
+  useEffect(() => {
+    if (!authed) return;
+    let cancelled = false;
+    listMyInvites("pending")
+      .then((r) => { if (!cancelled) setPendingInvites(r.length); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [authed, location.pathname]);
 
   const isActive = (path: string) =>
-    location.pathname === path
+    location.pathname === path || (path !== "/" && location.pathname.startsWith(path))
       ? "text-primary font-semibold"
       : "text-muted-foreground hover:text-foreground";
 
@@ -44,6 +56,17 @@ export default function Navbar() {
                   Upload
                 </span>
               </Link>
+              <Link to="/groups" className={`text-sm transition-colors ${isActive("/groups")}`}>
+                <span className="flex items-center gap-1.5 relative">
+                  <Users className="w-3.5 h-3.5" />
+                  Groups
+                  {pendingInvites > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-destructive text-destructive-foreground">
+                      {pendingInvites}
+                    </span>
+                  )}
+                </span>
+              </Link>
             </nav>
           )}
 
@@ -60,6 +83,16 @@ export default function Navbar() {
             </Button>
             {authed ? (
               <>
+                <Link to="/groups" className="md:hidden relative">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                    <Users className="w-4 h-4" />
+                    {pendingInvites > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold bg-destructive text-destructive-foreground flex items-center justify-center">
+                        {pendingInvites}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
                 <Link to="/upload" className="md:hidden">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Upload className="w-4 h-4" />
