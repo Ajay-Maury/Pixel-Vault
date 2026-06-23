@@ -15,11 +15,16 @@ interface Props {
   onClose: () => void;
   onDeleted?: (id: string) => void;
   onUpdated?: (image: ImageRecord) => void;
+  groupContext?: {
+    groupId: string;
+    canEdit?: boolean;
+    onDownload?: () => void | Promise<void>;
+  };
 }
 
-export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated }: Props) {
+export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated, groupContext }: Props) {
   const userId = getUserId();
-  const isOwner = userId && image.user_id === userId;
+  const isOwner = !groupContext && userId && image.user_id === userId;
   const isMobile = useIsMobile();
 
   // Lock body scroll when modal is open
