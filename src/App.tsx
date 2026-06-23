@@ -12,6 +12,8 @@ import UploadPage from "./pages/Upload";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import { isAuthenticated } from "@/lib/auth";
+import Groups from "./pages/Groups";
+import GroupDetail from "./pages/GroupDetail";
 // Wrapper for protected routes
 function RequireAuth({ children }: { children: JSX.Element }) {
   const authed = isAuthenticated();
@@ -57,6 +59,16 @@ const App = () => (
                       <Route path="/profile" element={
                         <RequireAuth>
                           <Profile />
+                        </RequireAuth>
+                      } />
+                      <Route path="/groups" element={
+                        <RequireAuth>
+                          <Groups />
+                        </RequireAuth>
+                      } />
+                      <Route path="/groups/:id" element={
+                        <RequireAuth>
+                          <GroupDetail />
                         </RequireAuth>
                       } />
                       {/* Redirect all unknown paths to Gallery (/) if authed, else Login */}
