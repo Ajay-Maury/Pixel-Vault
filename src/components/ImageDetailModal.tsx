@@ -355,11 +355,17 @@ export default function ImageDetailModal({ image, onClose, onDeleted, onUpdated,
                       Open
                     </Button>
                   </a>
-                  <a href={image.image_url} download>
-                    <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+                  {groupContext?.onDownload ? (
+                    <Button onClick={() => groupContext.onDownload?.()} className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
                       <Download className="w-4 h-4" />
                     </Button>
-                  </a>
+                  ) : (
+                    <a href={image.image_url} download>
+                      <Button className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </a>
+                  )}
                   {isOwner && (
                     <>
                       <Button onClick={() => setEditing(true)} variant="outline" className="border-border text-foreground hover:bg-muted gap-2">
