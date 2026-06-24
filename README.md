@@ -1,7 +1,6 @@
-
 # Pixel Vault
 
-A modern web application for uploading, managing, and sharing digital images. Built with React, TypeScript, and Tailwind CSS, featuring dark/light theme support, adaptive image modals, and a REST API backend with Cloudinary storage.
+A modern web application for uploading, managing, and sharing digital images. Built with React, TypeScript, and Tailwind CSS, featuring dark/light theme support, adaptive image modals, private share groups, and download analytics. Powered by a REST API backend with Cloudinary storage.
 
 ## Live Demo
 
@@ -57,19 +56,26 @@ A modern web application for uploading, managing, and sharing digital images. Bu
 ---
 
 - **My Library** — view only your own uploads with privacy filters (All / Public / Private)
-<img width="1161" height="801" alt="My Library Gallery" src="https://github.com/user-attachments/assets/78003825-8b09-42e3-971e-3b9ca5a27500" />  
+<img width="1161" height="801" alt="My Library Gallery" src="https://github.com/user-attachments/assets/78003825-8b09-42e3-971e-3b9ca5a27500" />
 
 ---
-### 🔍 Image Detail Modal
-- Adaptive layout based on image dimensions (portrait vs landscape)
-- Full-size image display without wasted space
-- View metadata: dimensions, size, upload date, keywords
-- Copy image URL to clipboard
-- Open image in new tab or download
+
+### 🔍 Image Detail Modal (`src/components/ImageDetailModal.tsx`)
+A single adaptive modal used everywhere an image is opened — My Library, Public Gallery, and Group Detail.
+
+- **Adaptive layout** — side-by-side info panel for portrait images on desktop, stacked layout (title → image → details) for landscape/mobile
+- **Fullscreen view** — click the image or the maximize icon to enter cursor-zoom fullscreen; press `Esc` or click anywhere to exit
+- **Body-scroll lock** — opening the modal locks the underlying page; only the modal content scrolls
+- **Single scroll container** — image and metadata scroll together so long info panels never desync from the picture
+- **Metadata** — dimensions, file size, upload date, keyword chips, full image URL with copy-to-clipboard
+- **Quick actions** — Copy URL, Open in new tab, Download
+- **Owner controls** — inline edit (title / description / keywords / privacy toggle) and delete-with-confirmation, hidden when viewing outside your own library
+- **Group context** — when opened from a Share Group, the Download button routes through the audited group-download endpoint instead of a direct link, and owner-only edit/delete are suppressed
 
   <img width="1278" height="801" alt="Image-Detail" src="https://github.com/user-attachments/assets/ab5ae8e0-e7dc-48e2-b953-a82acf14d5a7" />
 
 ---
+
 ### ✏️ Image Management (Owner Only)
 - Edit title, description, and keywords inline
 - Toggle privacy between public and private
@@ -79,24 +85,47 @@ A modern web application for uploading, managing, and sharing digital images. Bu
   <img width="1168" height="800" alt="Edit-Image" src="https://github.com/user-attachments/assets/3b0b1e97-b38f-4f30-8b69-6bc268b1e5f0" />
 
 ---
-### 👥 Share Groups
-- Create private share groups (group name max 10 chars, unique per owner)
-- Invite users by typing a name or email — autocomplete shows registered users; raw emails also work for not-yet-registered invitees
-- Members see invites in their **Invites** tab and can Accept / Reject
-- Owners can add or remove any of their owned images (public or private) from any group
-- Owners can rename or delete groups and remove members at any time
-- Members can browse and download shared images (downloads are audited)
-- Pending-invite badge on the Groups nav link keeps you up to date
-- **Owner analytics**: per-group download summary + paginated download history showing who downloaded what and when
 
+### 👥 Share Groups (`src/pages/Groups.tsx`)
+The Share Groups hub lets you privately share selected images with specific people.
+
+- **Three tabs** — `Owned` (groups you created), `Joined` (groups you've accepted into), `Invites` (pending / accepted / rejected)
+- **Create group** — name max 10 chars, unique per owner, enforced both client-side and server-side
+- **Group cards** — show role (Owner / Member), member count, image count, and a quick Open action
+- **Owner-only controls** — inline Rename and Delete on each owned group card
+- **Invite management** — pending invites display Accept / Reject buttons, accepted invites jump straight into the group
+- **Pending-invite badge** on the Groups nav link keeps unread invites visible across the app
 
 ---
+
+### 🗂️ Group Detail (`src/pages/GroupDetail.tsx`)
+The dedicated workspace for a single share group, with three tabs whose visibility depends on your role.
+
+**Images tab** (owner + members)
+- Searchable, paginated grid of shared images (counts reflect the full matched set, not just the current page)
+- Click any image to open it in the shared `ImageDetailModal` (in group-download mode)
+- Per-image Download button records the download in the backend audit log and streams the file as a blob
+- **Owner-only** multi-select with a sticky action bar to bulk-remove images from the group
+- **Owner-only** “Add Images” dialog — searches your library, supports multi-select with pagination, and adds picks to the group in one call
+
+**Members tab** (owner + members)
+- List of members with avatar initials, name, email, and a colored status pill (Pending / Accepted / Rejected)
+- **Owner-only** remove button per row (works for both members and pending invites)
+- **Owner-only** Invite dialog with debounced `/user/search` autocomplete — pick from suggestions or type a raw email; multiple invites at once via chip input
+
+**Analytics tab** (owner only)
+- Stat cards: Total Downloads, Unique Users, Top Image
+- Top Images grid with thumbnails and per-image download counts
+- Paginated Download History table — who downloaded what, when
+
+---
+
 ### 👤 Profile Page
 - Hero banner with avatar displaying user initials
 - View account info and upload statistics
 - Edit profile (first name, last name, gender)
 - Change password with real-time strength indicator
-- Quick-action grid: Edit Profile, Change Password, Upload, My Library
+- Quick-action grid: **Edit Profile**, **Change Password**, **Upload**, **My Library**, **Share Groups**
 
   <img width="1332" height="797" alt="Profilr-page" src="https://github.com/user-attachments/assets/1891bb7d-cd45-422e-b82f-901eb5ddff5c" />
 
@@ -154,6 +183,8 @@ VITE_BASE_URL= <Backend Service URL>
 The backend service for this application is available here:
 👉 [https://github.com/Ajay-Maury/Pixel-Vault-Backend](https://github.com/Ajay-Maury/Pixel-Vault-Backend.git)
 
+Refer to the backend repository's README for the full list of REST endpoints, request/response shapes, and authentication details. The frontend wraps every backend endpoint in `src/lib/api.ts`.
+
 ### Running Locally
 
 ```sh
@@ -162,73 +193,36 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173).
 
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/user/register` | Register a new user |
-| POST | `/user/login` | Login and receive JWT |
-| PUT | `/user/change-password` | Change Password |
-| GET | `/user/profile` | Get Logged-in user profile |
-| PUT | `/user/profile` | Update user profile |
-| GET | `/user/search?email=&limit=` | Search registered users (for invites/autocomplete) |
-| POST | `/image/search` | Search images. Returns `{ data, totalCount, privateCount, publicCount }` — counts reflect the full matched set, not the current page |
-| POST | `/image/minio-upload` | Upload up to 30 image files (`images` field, `multipart/form-data`) |
-| POST | `/image/save` | Save metadata for one (`imageUrl`) or many (`imageUrls[]`) uploaded images |
-| POST | `/image/bulk/privacy` | Bulk update privacy (`{ imageIds[], isPrivate }`) for up to 100 owned images |
-| POST | `/image/bulk/delete` | Bulk delete (`{ imageIds[] }`) for up to 100 owned images |
-| PUT | `/image/:id` | Update image (title, description, keywords, privacy) |
-| DELETE | `/image/:id` | Delete an image |
-| POST | `/share-groups` | Create a share group (`{ name }`, max 10 chars, unique per owner) |
-| GET | `/share-groups/my-owned` | List groups owned by the authenticated user |
-| GET | `/share-groups/my-joined` | List groups the user is an accepted member of |
-| GET | `/share-groups/my-invites?status=pending` | List the user's invites |
-| GET | `/share-groups/:id` | Get group details (owner or accepted member) |
-| PUT | `/share-groups/:id` | Rename a group (owner) |
-| DELETE | `/share-groups/:id` | Delete a group (owner) |
-| POST | `/share-groups/:id/invite` | Invite users by email (`{ emails[] }`) |
-| POST | `/share-groups/invites/:memberId/accept` | Accept an invite |
-| POST | `/share-groups/invites/:memberId/reject` | Reject an invite |
-| DELETE | `/share-groups/:id/members/:memberId` | Remove a member or pending invite (owner) |
-| POST | `/share-groups/:id/images/add` | Add owned images (`{ imageIds[] }`) to the group |
-| POST | `/share-groups/:id/images/remove` | Remove images (`{ imageIds[] }`) from the group |
-| GET | `/share-groups/:id/images` | List shared images (search, sort, paginate; counts reflect full matched set) |
-| POST | `/share-groups/:id/images/:imageId/download` | Record a download and return the download URL |
-| GET | `/share-groups/:id/downloads/summary` | Owner-only download analytics summary |
-| GET | `/share-groups/:id/downloads?limit=&offset=` | Owner-only paginated download audit history |
-
-All `/image/*` and `/user/*` (instead of register and login) all endpoints require `Authorization: Bearer <token>` header.
-
 ## Project Structure
 
 ```
 src/
 ├── components/
-│   ├── ui/                # shadcn/ui components
-│   ├── ImageDetailModal.tsx
-│   ├── Navbar.tsx
+│   ├── ui/                  # shadcn/ui components
+│   ├── ImageDetailModal.tsx # Adaptive image modal (fullscreen, edit, group-download mode)
+│   ├── Navbar.tsx           # Global nav with Groups link + pending-invite badge
 │   ├── NavLink.tsx
-│   └── ThemeProvider.tsx   # Dark/light mode context
+│   └── ThemeProvider.tsx    # Dark/light mode context
 ├── hooks/
 │   ├── use-mobile.tsx
 │   └── use-toast.ts
 ├── lib/
-│   ├── api.ts             # Axios client & API functions
-│   ├── auth.ts            # Auth helpers (token, userId)
+│   ├── api.ts               # Axios client + typed wrappers for every backend endpoint
+│   ├── auth.ts              # Token + userId helpers
 │   └── utils.ts
 ├── pages/
-│   ├── Index.tsx           # Landing / home page
-│   ├── Gallery.tsx         # Public gallery + My Library (with bulk actions)
-│   ├── Groups.tsx          # Share Groups list (owned / joined / invites)
-│   ├── GroupDetail.tsx     # Group images, members, owner analytics
+│   ├── Index.tsx            # Landing / home page
+│   ├── Gallery.tsx          # Public gallery + My Library (with bulk actions)
+│   ├── Groups.tsx           # Share Groups: Owned / Joined / Invites tabs
+│   ├── GroupDetail.tsx      # Per-group Images / Members / Analytics tabs
 │   ├── Login.tsx
 │   ├── Register.tsx
-│   ├── Upload.tsx
-│   ├── Profile.tsx
+│   ├── Upload.tsx           # Batch upload with progress, retry, reordering
+│   ├── Profile.tsx          # Account hub w/ quick-action grid incl. Share Groups
 │   └── NotFound.tsx
-├── App.tsx
+├── App.tsx                  # Routes (incl. /groups and /groups/:id under RequireAuth)
 ├── main.tsx
-└── index.css              # Design tokens (light + dark)
+└── index.css                # Design tokens (light + dark)
 ```
 
 ## Contributing
