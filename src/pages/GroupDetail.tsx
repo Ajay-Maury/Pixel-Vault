@@ -743,15 +743,20 @@ function AnalyticsTab({ groupId }: { groupId: string }) {
                 </tr>
               </thead>
               <tbody>
-                {downloads.map((d) => (
-                  <tr key={d.id} className="border-t border-border">
-                    <td className="px-4 py-2.5 text-foreground">{`${d.downloader?.firstName} ${d.downloader?.lastName}` || "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{d.image?.title || "—"}</td>
-                    <td className="px-4 py-2.5 text-right text-muted-foreground">
-                      {new Date(d.downloadedAt).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                {downloads.map((d) => {
+                  const userName = [d.downloader?.firstName, d.downloader?.lastName].filter(Boolean).join(" ").trim();
+                  const userLabel = userName || d.downloader?.email || d.userEmail || "—";
+                  const imgLabel = d.image?.title || d.imageTitle || "—";
+                  return (
+                    <tr key={d.id} className="border-t border-border">
+                      <td className="px-4 py-2.5 text-foreground">{userLabel}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{imgLabel}</td>
+                      <td className="px-4 py-2.5 text-right text-muted-foreground">
+                        {new Date(d.downloadedAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
