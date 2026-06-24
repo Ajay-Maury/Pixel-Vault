@@ -110,19 +110,23 @@ export interface GroupImagesResponse {
 
 export interface DownloadRecord {
   id: string;
-  imageId: string;
+  downloadedAt: string;
+  // Nested shape returned by backend
+  image?: { id: string; title?: string; image_url?: string };
+  downloader?: { id?: string; email?: string; firstName?: string; lastName?: string };
+  // Legacy/flat fallbacks
+  imageId?: string;
   imageUrl?: string;
   imageTitle?: string;
   userId?: string;
   userEmail?: string;
-  downloadedAt: string;
 }
 
 export interface DownloadsSummary {
   totalDownloads: number;
   uniqueUsers?: number;
   topImages?: { imageId: string; title?: string; imageUrl?: string; count: number }[];
-  topUsers?: { userId?: string; email?: string; count: number }[];
+  topUsers?: { userId?: string; email?: string; firstName?: string; lastName?: string; count: number }[];
   [key: string]: any;
 }
 

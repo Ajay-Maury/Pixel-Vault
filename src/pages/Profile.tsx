@@ -17,6 +17,7 @@ import {
   Upload,
   User,
   UserRound,
+  Users,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -433,6 +434,15 @@ export default function Profile() {
             </div>
             <h3 className="font-semibold text-foreground text-sm">My Library</h3>
             <p className="text-xs text-muted-foreground mt-1">Browse your uploaded images</p>
+          </Link>
+
+          {/* Share Groups */}
+          <Link to="/groups" className="group text-left rounded-xl border border-border bg-card p-5 shadow-card hover:border-primary/40 hover:shadow-glow transition-all duration-300 block">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="font-semibold text-foreground text-sm">Share Groups</h3>
+            <p className="text-xs text-muted-foreground mt-1">Owned, joined & invites</p>
           </Link>
         </div>
 
