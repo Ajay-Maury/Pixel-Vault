@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { z } from "zod";
 import {
   ArrowLeft, Users, Image as ImageIcon, BarChart3, Plus, Loader2, Mail,
   Check, X as XIcon, Trash2, UserPlus, Search, Download, ImageOff,
-  Pencil, Crown,
+  Pencil, Crown, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
   getGroupDownloadsSummary, listGroupDownloads, searchUsers, searchImages,
   ShareGroup, GroupMember, ImageRecord, DownloadRecord, DownloadsSummary, UserLite, GroupImageItem,
 } from "@/lib/api";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getUserId } from "@/lib/auth";
 import { toast } from "sonner";
 import ImageDetailModal from "@/components/ImageDetailModal";
