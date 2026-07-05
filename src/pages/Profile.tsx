@@ -183,7 +183,7 @@ export default function Profile() {
     const result = profileSchema.safeParse({ firstName, lastName, gender });
     if (!result.success) {
       const errors: Record<string, string> = {};
-      result.error.issues.forEach((err) => {
+      result.error.errors.forEach((err) => {
         if (err.path[0]) errors[err.path[0] as string] = err.message;
       });
       setProfileErrors(errors);
@@ -223,7 +223,7 @@ export default function Profile() {
     const result = passwordChangeSchema.safeParse({ currentPassword, newPassword, confirmPassword });
     if (!result.success) {
       const errors: Record<string, string> = {};
-      result.error.issues.forEach((err) => {
+      result.error.errors.forEach((err) => {
         if (err.path[0]) errors[err.path[0] as string] = err.message;
       });
       setFieldErrors(errors);
