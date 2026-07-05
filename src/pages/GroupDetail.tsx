@@ -858,12 +858,6 @@ function AnalyticsTab({ groupId }: { groupId: string }) {
                   <th className="px-4 py-2.5 text-right whitespace-nowrap">Date</th>
                 </tr>
               </thead>
-                <tr className="text-left text-xs text-muted-foreground uppercase">
-                  <th className="px-4 py-2.5">User</th>
-                  <th className="px-4 py-2.5">Image</th>
-                  <th className="px-4 py-2.5 text-right">Date</th>
-                </tr>
-              </thead>
               <tbody>
                 {downloads.map((d) => {
                   const userName = [d.downloader?.firstName, d.downloader?.lastName].filter(Boolean).join(" ").trim();
