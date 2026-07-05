@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Users, Plus, Loader2, Mail, Inbox, Check, X as XIcon, Trash2,
-  Pencil, ArrowRight, Crown, UserCheck, Clock, ShieldX,
+  Pencil, ArrowRight, Crown, UserCheck, Clock, ShieldX, Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +24,31 @@ import { toast } from "sonner";
 
 const NAME_MAX = 10;
 
+type TabKey = "owned" | "joined" | "invites";
+type InviteFilter = "all" | "pending" | "accepted" | "rejected";
+
+interface GroupsProps {
+  defaultTab?: TabKey;
+}
+
 function normalizeStatus(status: InviteStatus | string | undefined) {
   return String(status ?? "").trim().toLowerCase();
+}
+
+function timeAgo(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso).getTime();
+  if (Number.isNaN(d)) return "";
+  const diff = Date.now() - d;
+  const s = Math.round(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 function statusBadge(status: InviteStatus | string | undefined) {
@@ -47,12 +70,18 @@ function statusBadge(status: InviteStatus | string | undefined) {
   );
 }
 
-export default function Groups() {
+export default function Groups({ defaultTab = "owned" }: GroupsProps) {
   const authed = isAuthenticated();
-  const [tab, setTab] = useState<"owned" | "joined" | "invites">("owned");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const initialTab = (searchParams.get("tab") as TabKey) || defaultTab;
+  const [tab, setTab] = useState<TabKey>(initialTab);
+
   const [owned, setOwned] = useState<ShareGroup[]>([]);
   const [joined, setJoined] = useState<ShareGroup[]>([]);
   const [invites, setInvites] = useState<GroupInvite[]>([]);
+  const [inviteFilter, setInviteFilter] = useState<InviteFilter>("all");
+
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -61,6 +90,24 @@ export default function Groups() {
   const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<ShareGroup | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Sync tab with URL (?tab=invites)
+  useEffect(() => {
+    const urlTab = searchParams.get("tab") as TabKey | null;
+    if (urlTab && urlTab !== tab && ["owned", "joined", "invites"].includes(urlTab)) {
+      setTab(urlTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  function handleTabChange(v: string) {
+    const next = v as TabKey;
+    setTab(next);
+    const params = new URLSearchParams(searchParams);
+    if (next === defaultTab) params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
 
   const refresh = useCallback(async () => {
     if (!authed) return;
@@ -160,6 +207,11 @@ export default function Groups() {
 
   const pendingCount = invites.filter((i) => normalizeStatus(i.status) === "pending").length;
 
+  const filteredInvites = useMemo(() => {
+    if (inviteFilter === "all") return invites;
+    return invites.filter((i) => normalizeStatus(i.status) === inviteFilter);
+  }, [invites, inviteFilter]);
+
   if (!authed) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
@@ -169,35 +221,39 @@ export default function Groups() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-foreground flex items-center gap-2">
-            <Users className="w-7 h-7 text-primary" />
-            Share Groups
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
+            <Users className="w-6 h-6 sm:w-7 sm:h-7 text-primary flex-shrink-0" />
+            {tab === "invites" ? "My Invites" : "Share Groups"}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Create groups, invite users, and share selected images privately.
+            {tab === "invites"
+              ? "Track invites you've received and jump into shared groups."
+              : "Create groups, invite users, and share selected images privately."}
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2">
+        <Button onClick={() => setShowCreate(true)} className="bg-gradient-gold text-primary-foreground hover:opacity-90 shadow-glow gap-2 w-full sm:w-auto">
           <Plus className="w-4 h-4" /> New Group
         </Button>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-        <TabsList className="mb-6 bg-muted border border-border h-auto p-1 gap-1">
-          <TabsTrigger value="owned" className="gap-2 px-4 py-2 data-[state=active]:bg-gradient-gold data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow rounded-md text-muted-foreground font-medium">
+      <Tabs value={tab} onValueChange={handleTabChange}>
+        <TabsList className="mb-6 bg-muted border border-border h-auto p-1 gap-1 flex flex-wrap w-full sm:w-auto">
+          <TabsTrigger value="owned" className="gap-2 px-3 sm:px-4 py-2 data-[state=active]:bg-gradient-gold data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow rounded-md text-muted-foreground font-medium text-xs sm:text-sm">
             <Crown className="w-3.5 h-3.5" /> Owned <span className="text-xs opacity-70">({owned.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="joined" className="gap-2 px-4 py-2 data-[state=active]:bg-gradient-gold data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow rounded-md text-muted-foreground font-medium">
+          <TabsTrigger value="joined" className="gap-2 px-3 sm:px-4 py-2 data-[state=active]:bg-gradient-gold data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow rounded-md text-muted-foreground font-medium text-xs sm:text-sm">
             <UserCheck className="w-3.5 h-3.5" /> Joined <span className="text-xs opacity-70">({joined.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="invites" className="gap-2 px-4 py-2 data-[state=active]:bg-gradient-gold data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow rounded-md text-muted-foreground font-medium">
+          <TabsTrigger value="invites" className="gap-2 px-3 sm:px-4 py-2 data-[state=active]:bg-gradient-gold data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow rounded-md text-muted-foreground font-medium text-xs sm:text-sm">
             <Inbox className="w-3.5 h-3.5" /> Invites
-            <span className={`text-xs ml-0.5 px-1.5 rounded-full ${pendingCount > 0 ? "bg-destructive text-destructive-foreground" : "opacity-70"}`}>
-              {pendingCount}
-            </span>
+            {pendingCount > 0 && (
+              <span className="text-xs ml-0.5 px-1.5 rounded-full bg-destructive text-destructive-foreground">
+                {pendingCount}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -245,51 +301,100 @@ export default function Groups() {
         </TabsContent>
 
         <TabsContent value="invites">
-          {!loading && invites.length === 0 ? (
-            <EmptyState icon={<Inbox className="w-10 h-10" />} title="No invites" description="You'll see group invites here." />
+          {!loading && invites.length > 0 && (
+            <div className="flex items-center gap-2 mb-4 flex-wrap" role="tablist" aria-label="Filter invites">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Filter className="w-3 h-3" /> Filter
+              </span>
+              {(["all", "pending", "accepted", "rejected"] as InviteFilter[]).map((f) => {
+                const active = inviteFilter === f;
+                const count = f === "all" ? invites.length : invites.filter((i) => normalizeStatus(i.status) === f).length;
+                return (
+                  <button
+                    key={f}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setInviteFilter(f)}
+                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                      active
+                        ? "bg-gradient-gold text-primary-foreground border-transparent shadow-glow"
+                        : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {f.charAt(0).toUpperCase() + f.slice(1)} <span className="opacity-70">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {!loading && filteredInvites.length === 0 ? (
+            <EmptyState
+              icon={<Inbox className="w-10 h-10" />}
+              title={invites.length === 0 ? "No invites" : "Nothing here"}
+              description={
+                invites.length === 0
+                  ? "You'll see group invites here as soon as someone shares with you."
+                  : "No invites match this filter."
+              }
+            />
           ) : (
             <div className="space-y-3">
-              {invites.map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between gap-4 p-4 bg-card border border-border rounded-xl">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-foreground truncate">{inv.group.name}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                        {statusBadge(inv.status)}
-                        {inv.invitedAt && <span>· {new Date(inv.invitedAt).toLocaleDateString()}</span>}
+              {filteredInvites.map((inv) => {
+                const status = normalizeStatus(inv.status);
+                const inviterEmail = (inv as any).inviter?.email || inv.group.ownerEmail;
+                return (
+                  <div
+                    key={inv.id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 bg-card border border-border rounded-xl ${
+                      status === "rejected" ? "opacity-60" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-foreground truncate">{inv.group.name}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                          {statusBadge(inv.status)}
+                          {inviterEmail && <span className="truncate">from {inviterEmail}</span>}
+                          {inv.invitedAt && <span title={new Date(inv.invitedAt).toLocaleString()}>· {timeAgo(inv.invitedAt)}</span>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  {normalizeStatus(inv.status) === "pending" ? (
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button
-                        size="sm" variant="outline"
-                        onClick={() => handleReject(inv)}
-                        disabled={actionLoading === inv.id}
-                        className="border-border gap-1.5"
-                      ><XIcon className="w-3.5 h-3.5" /> Reject</Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAccept(inv)}
-                        disabled={actionLoading === inv.id}
-                        className="bg-gradient-gold text-primary-foreground gap-1.5"
-                      >
-                        {actionLoading === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                        Accept
-                      </Button>
+                    <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
+                      {status === "pending" ? (
+                        <>
+                          <Button
+                            size="sm" variant="outline"
+                            onClick={() => handleReject(inv)}
+                            disabled={actionLoading === inv.id}
+                            className="border-border gap-1.5 flex-1 sm:flex-none"
+                          ><XIcon className="w-3.5 h-3.5" /> Reject</Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAccept(inv)}
+                            disabled={actionLoading === inv.id}
+                            className="bg-gradient-gold text-primary-foreground gap-1.5 flex-1 sm:flex-none"
+                          >
+                            {actionLoading === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                            Accept
+                          </Button>
+                        </>
+                      ) : status === "accepted" ? (
+                        <Link to={`/groups/${inv.group.id}`} className="w-full sm:w-auto">
+                          <Button size="sm" className="bg-gradient-gold text-primary-foreground gap-1.5 w-full">
+                            Open group <ArrowRight className="w-3.5 h-3.5" />
+                          </Button>
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-muted-foreground px-2 py-1">Hidden</span>
+                      )}
                     </div>
-                  ) : normalizeStatus(inv.status) === "accepted" ? (
-                    <Link to={`/groups/${inv.group.id}`}>
-                      <Button size="sm" variant="outline" className="border-border gap-1.5">
-                        Open <ArrowRight className="w-3.5 h-3.5" />
-                      </Button>
-                    </Link>
-                  ) : null}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -385,11 +490,11 @@ function GroupCard({
           <h3 className="font-display text-xl font-bold text-foreground truncate">{group.name}</h3>
         </div>
         {role === "owner" && (
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onRename} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" title="Rename">
+          <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <button onClick={onRename} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" title="Rename" aria-label="Rename group">
               <Pencil className="w-3.5 h-3.5" />
             </button>
-            <button onClick={onDelete} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Delete">
+            <button onClick={onDelete} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Delete" aria-label="Delete group">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
