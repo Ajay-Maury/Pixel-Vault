@@ -66,6 +66,11 @@ const App = () => (
                           <Groups />
                         </RequireAuth>
                       } />
+                      <Route path="/invites" element={
+                        <RequireAuth>
+                          <Groups defaultTab="invites" />
+                        </RequireAuth>
+                      } />
                       <Route path="/groups/:id" element={
                         <RequireAuth>
                           <GroupDetail />

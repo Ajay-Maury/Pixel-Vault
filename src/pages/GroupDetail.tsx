@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { z } from "zod";
 import {
   ArrowLeft, Users, Image as ImageIcon, BarChart3, Plus, Loader2, Mail,
   Check, X as XIcon, Trash2, UserPlus, Search, Download, ImageOff,
-  Pencil, Crown,
+  Pencil, Crown, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
   getGroupDownloadsSummary, listGroupDownloads, searchUsers, searchImages,
   ShareGroup, GroupMember, ImageRecord, DownloadRecord, DownloadsSummary, UserLite, GroupImageItem,
 } from "@/lib/api";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getUserId } from "@/lib/auth";
 import { toast } from "sonner";
 import ImageDetailModal from "@/components/ImageDetailModal";
@@ -553,46 +555,143 @@ function MembersTab({ groupId, group, isOwner, onChanged }: {
       )}
 
       {showInvite && isOwner && (
-        <InviteDialog groupId={groupId} onClose={() => setShowInvite(false)} onInvited={() => { setShowInvite(false); onChanged(); }} />
+        <InviteDialog
+          groupId={groupId}
+          existingEmails={members.map((m) => m.email?.toLowerCase()).filter(Boolean) as string[]}
+          onClose={() => setShowInvite(false)}
+          onInvited={() => { setShowInvite(false); onChanged(); }}
+        />
       )}
     </div>
   );
 }
 
 // ── Invite dialog with autocomplete ──
-function InviteDialog({ groupId, onClose, onInvited }: { groupId: string; onClose: () => void; onInvited: () => void }) {
+const emailSchema = z.string().trim().toLowerCase().email({ message: "Enter a valid email address" }).max(255);
+
+function InviteDialog({
+  groupId, existingEmails = [], onClose, onInvited,
+}: {
+  groupId: string;
+  existingEmails?: string[];
+  onClose: () => void;
+  onInvited: () => void;
+}) {
+  const currentUserId = getUserId();
+  const currentEmail = (typeof window !== "undefined" ? localStorage.getItem("userEmail") : "")?.toLowerCase() || "";
+
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, 300);
   const [results, setResults] = useState<UserLite[]>([]);
   const [searching, setSearching] = useState(false);
   const [chips, setChips] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
+  const [inputError, setInputError] = useState<string | null>(null);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const [open, setOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
 
+  const blockedEmails = useMemo(() => {
+    const s = new Set<string>();
+    existingEmails.forEach((e) => s.add(e.toLowerCase()));
+    if (currentEmail) s.add(currentEmail);
+    chips.forEach((c) => s.add(c.toLowerCase()));
+    return s;
+  }, [existingEmails, currentEmail, chips]);
+
+  // Debounced + validated + abortable search
   useEffect(() => {
-    if (query.trim().length < 2) { setResults([]); return; }
-    const t = setTimeout(() => {
-      setSearching(true);
-      searchUsers(query.trim())
-        .then((r) => setResults(r))
-        .catch(() => setResults([]))
-        .finally(() => setSearching(false));
-    }, 250);
-    return () => clearTimeout(t);
-  }, [query]);
+    const q = debouncedQuery.trim();
+    if (q.length < 2) { setResults([]); setOpen(false); return; }
 
-  function addEmail(email: string) {
-    const e = email.trim().toLowerCase();
-    if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-      toast.error("Invalid email");
+    // Only hit the API when the input either looks like the start of a
+    // valid email (contains "@" and passes zod) or is a plain-text name (≥ 2 chars, no "@").
+    const looksLikeEmail = q.includes("@");
+    if (looksLikeEmail) {
+      const parsed = emailSchema.safeParse(q);
+      if (!parsed.success) { setResults([]); setOpen(false); return; }
+    }
+
+    // Cancel any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setSearching(true);
+    setOpen(true);
+    searchUsers(q, 8, controller.signal)
+      .then((r) => {
+        const filtered = r
+          .filter((u) => !blockedEmails.has(u.email.toLowerCase()))
+          .filter((u) => u.id !== currentUserId)
+          .slice(0, 8);
+        setResults(filtered);
+        setActiveIdx(filtered.length > 0 ? 0 : -1);
+      })
+      .catch((err) => {
+        // Ignore user-cancelled aborts
+        if (err?.name !== "CanceledError" && err?.name !== "AbortError") setResults([]);
+      })
+      .finally(() => setSearching(false));
+
+    return () => controller.abort();
+  }, [debouncedQuery, blockedEmails, currentUserId]);
+
+  // Outside-click closes suggestion dropdown
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  function addEmail(rawEmail: string) {
+    const parsed = emailSchema.safeParse(rawEmail);
+    if (!parsed.success) {
+      setInputError(parsed.error.issues[0]?.message ?? "Invalid email");
       return;
     }
-    if (chips.includes(e)) return;
-    setChips([...chips, e]);
+    const email = parsed.data;
+    if (blockedEmails.has(email)) {
+      setInputError(
+        email === currentEmail
+          ? "You can't invite yourself"
+          : "Already invited or a member",
+      );
+      return;
+    }
+    setChips((c) => [...c, email]);
     setQuery("");
     setResults([]);
+    setInputError(null);
+    setOpen(false);
+    setActiveIdx(-1);
   }
 
   function removeChip(e: string) {
-    setChips(chips.filter((c) => c !== e));
+    setChips((cs) => cs.filter((c) => c !== e));
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (open && results.length > 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => (i + 1) % results.length); return; }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setActiveIdx((i) => (i - 1 + results.length) % results.length); return; }
+      if (e.key === "Enter" && activeIdx >= 0) {
+        e.preventDefault();
+        addEmail(results[activeIdx].email);
+        return;
+      }
+      if (e.key === "Escape") { setOpen(false); return; }
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (query.trim()) addEmail(query);
+    }
+    if (e.key === "Backspace" && !query && chips.length > 0) {
+      removeChip(chips[chips.length - 1]);
+    }
   }
 
   async function handleSend() {
@@ -611,7 +710,7 @@ function InviteDialog({ groupId, onClose, onInvited }: { groupId: string; onClos
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Invite users</DialogTitle>
-          <DialogDescription>Search registered users or enter an email directly.</DialogDescription>
+          <DialogDescription>Search registered users or enter an email address directly.</DialogDescription>
         </DialogHeader>
 
         {chips.length > 0 && (
@@ -620,7 +719,7 @@ function InviteDialog({ groupId, onClose, onInvited }: { groupId: string; onClos
               <span key={e} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border text-sm">
                 <Mail className="w-3 h-3 text-muted-foreground" />
                 {e}
-                <button onClick={() => removeChip(e)} className="text-muted-foreground hover:text-destructive">
+                <button onClick={() => removeChip(e)} className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${e}`}>
                   <XIcon className="w-3 h-3" />
                 </button>
               </span>
@@ -628,26 +727,37 @@ function InviteDialog({ groupId, onClose, onInvited }: { groupId: string; onClos
           </div>
         )}
 
-        <div className="relative">
+        <div className="relative" ref={wrapRef}>
           <Input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEmail(query); } }}
+            onChange={(e) => { setQuery(e.target.value); setInputError(null); }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => { if (results.length > 0) setOpen(true); }}
             placeholder="Type a name or email…"
+            aria-invalid={!!inputError}
+            aria-autocomplete="list"
+            aria-expanded={open}
             autoFocus
           />
-          {(searching || results.length > 0) && query.trim().length >= 2 && (
-            <div className="absolute z-10 mt-1 w-full bg-card border border-border rounded-lg shadow-image max-h-64 overflow-y-auto">
+          {open && (searching || results.length > 0) && (
+            <div className="absolute z-10 mt-1 w-full bg-card border border-border rounded-lg shadow-image max-h-64 overflow-y-auto" role="listbox">
               {searching ? (
                 <div className="p-3 text-center text-muted-foreground text-sm">
                   <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                 </div>
+              ) : results.length === 0 ? (
+                <div className="p-3 text-center text-muted-foreground text-xs">No matches</div>
               ) : (
-                results.map((u) => (
+                results.map((u, i) => (
                   <button
                     key={u.id}
+                    role="option"
+                    aria-selected={i === activeIdx}
+                    onMouseEnter={() => setActiveIdx(i)}
                     onClick={() => addEmail(u.email)}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted text-left transition-colors"
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                      i === activeIdx ? "bg-muted" : "hover:bg-muted"
+                    }`}
                   >
                     <div className="w-7 h-7 rounded-full bg-gradient-gold text-primary-foreground flex items-center justify-center text-xs font-semibold flex-shrink-0">
                       {(u.firstName?.[0] || u.email[0]).toUpperCase()}
@@ -665,7 +775,13 @@ function InviteDialog({ groupId, onClose, onInvited }: { groupId: string; onClos
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">Press Enter to add an email manually.</p>
+        {inputError ? (
+          <p className="text-xs text-destructive flex items-center gap-1.5" role="alert">
+            <AlertCircle className="w-3 h-3" /> {inputError}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">Press Enter to add an email manually. Use ↑ / ↓ to pick a suggestion.</p>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -733,13 +849,13 @@ function AnalyticsTab({ groupId }: { groupId: string }) {
         {downloads.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm bg-card border border-border rounded-lg">No downloads yet</div>
         ) : (
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-card border border-border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm min-w-[520px]">
               <thead className="bg-muted">
                 <tr className="text-left text-xs text-muted-foreground uppercase">
                   <th className="px-4 py-2.5">User</th>
                   <th className="px-4 py-2.5">Image</th>
-                  <th className="px-4 py-2.5 text-right">Date</th>
+                  <th className="px-4 py-2.5 text-right whitespace-nowrap">Date</th>
                 </tr>
               </thead>
               <tbody>
