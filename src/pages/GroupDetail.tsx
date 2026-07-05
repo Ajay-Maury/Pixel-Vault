@@ -849,9 +849,15 @@ function AnalyticsTab({ groupId }: { groupId: string }) {
         {downloads.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm bg-card border border-border rounded-lg">No downloads yet</div>
         ) : (
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-card border border-border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm min-w-[520px]">
               <thead className="bg-muted">
+                <tr className="text-left text-xs text-muted-foreground uppercase">
+                  <th className="px-4 py-2.5">User</th>
+                  <th className="px-4 py-2.5">Image</th>
+                  <th className="px-4 py-2.5 text-right whitespace-nowrap">Date</th>
+                </tr>
+              </thead>
                 <tr className="text-left text-xs text-muted-foreground uppercase">
                   <th className="px-4 py-2.5">User</th>
                   <th className="px-4 py-2.5">Image</th>
