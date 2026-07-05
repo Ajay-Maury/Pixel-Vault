@@ -8,7 +8,7 @@ vi.mock("@/lib/auth", () => ({
   getUserId: () => "user-1",
 }));
 
-const api = {
+vi.mock("@/lib/api", () => ({
   listMyOwnedGroups: vi.fn(),
   listMyJoinedGroups: vi.fn(),
   listMyInvites: vi.fn(),
@@ -19,8 +19,8 @@ const api = {
   deleteGroup: vi.fn(),
   searchUsers: vi.fn(),
   inviteToGroup: vi.fn(),
-};
-vi.mock("@/lib/api", () => api);
+}));
+import * as api from "@/lib/api";
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
