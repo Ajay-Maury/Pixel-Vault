@@ -57,16 +57,25 @@ export default function Navbar() {
                 </span>
               </Link>
               <Link to="/groups" className={`text-sm transition-colors ${isActive("/groups")}`}>
-                <span className="flex items-center gap-1.5 relative">
+                <span className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5" />
                   Groups
-                  {pendingInvites > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-destructive text-destructive-foreground">
-                      {pendingInvites}
-                    </span>
-                  )}
                 </span>
               </Link>
+              {pendingInvites > 0 && (
+                <Link
+                  to="/invites"
+                  className={`text-sm transition-colors ${isActive("/invites")}`}
+                  aria-label={`${pendingInvites} pending invites`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    Invites
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-destructive text-destructive-foreground">
+                      {pendingInvites}
+                    </span>
+                  </span>
+                </Link>
+              )}
             </nav>
           )}
 
@@ -83,7 +92,7 @@ export default function Navbar() {
             </Button>
             {authed ? (
               <>
-                <Link to="/groups" className="md:hidden relative">
+                <Link to={pendingInvites > 0 ? "/invites" : "/groups"} className="md:hidden relative" aria-label="Groups">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Users className="w-4 h-4" />
                     {pendingInvites > 0 && (
