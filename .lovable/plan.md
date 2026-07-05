@@ -1,67 +1,82 @@
+# Groups hardening: tests, responsiveness, invites view, invite validation
 
-# Plan: Bulk Actions + Share Groups + Download Analytics
+Five focused workstreams. All frontend + Vitest — no backend changes.
 
-Backend already exposes everything needed (bulk privacy/delete, share-groups CRUD, invites accept/reject, group images add/remove, downloads with audit, owner analytics, user search). This is a pure frontend build.
+## 1. End-to-end tests (Vitest + Testing Library, mocked API)
 
-## 1. API Layer (`src/lib/api.ts`)
+New file: `src/pages/__tests__/groups.e2e.test.tsx`
 
-Add typed wrappers for all new endpoints:
-- `bulkUpdatePrivacy(imageIds, isPrivate)` → `POST /image/bulk/privacy`
-- `bulkDeleteImages(imageIds)` → `POST /image/bulk/delete`
-- `searchUsers(email, limit?)` → `GET /user/search`
-- Share groups: `createGroup`, `listMyOwnedGroups`, `listMyJoinedGroups`, `listMyInvites(status?)`, `getGroup(id)`, `inviteToGroup(id, emails[])`, `acceptInvite(memberId)`, `rejectInvite(memberId)`, `getGroupImages(id, filters)`, `addImagesToGroup(id, imageIds[])`, `removeImagesFromGroup(id, imageIds[])`, `recordGroupDownload(id, imageId)`, `getGroupDownloadsSummary(id)`, `listGroupDownloads(id, limit, offset)`, `renameGroup(id, name)`, `deleteGroup(id)`, `removeGroupMember(id, memberId)`
+The backend is external and the sandbox can't hit it, so "end-to-end" here means full component flows with `src/lib/api.ts` mocked via `vi.mock`. Covers the request scenarios:
 
-## 2. Gallery — Bulk selection (`src/pages/Gallery.tsx`)
+- **Group creation**: open Groups → click "New Group" → type name > 10 chars is clipped → submit → `createGroup` called → toast + list refresh.
+- **Invite by email**: on GroupDetail Members tab → type email → debounced `searchUsers` fires once after typing settles → pick a suggestion → `inviteToGroup` called → pending row appears.
+- **Accept / reject**: Invites tab renders one pending invite from mocked `listMyInvites` → Accept calls `acceptInvite`, moves group into Joined; separate case: Reject calls `rejectInvite`, row hides accept/open button.
+- **Member visibility & download rights**: render GroupDetail as non-owner (mock `me` id ≠ `group.ownerId`) → Members tab is hidden or read-only, Analytics tab hidden, image cards show Download but no edit/delete; opening `ImageDetailModal` in group context calls `recordGroupDownload` on download and doesn't render owner-only controls.
 
-Only in **My Library** tab:
-- "Select" toggle in toolbar → enters selection mode
-- Checkbox overlay on each card; "Select all on page" / "Clear" controls
-- Selection action bar (sticky) with counts: **Make Public**, **Make Private**, **Delete** (confirm dialog), **Add to group…** (opens group picker dialog listing user's owned groups + "Create new group" inline)
-- Refetch after each action; clear selection
+Uses existing `vitest.config.ts` + `src/test/setup.ts`. Adds a small `renderWithRouter` helper inline. Mocks `sonner`'s `toast` to assert calls without DOM.
 
-## 3. Share Groups page (`src/pages/Groups.tsx`, route `/groups`)
+## 2. Fix breaking UI / functionality found during test authoring
 
-Tabs: **My Groups (owned)**, **Joined**, **Invites**.
-- **My Groups**: list cards with name, member count, image count, actions (Rename, Delete, Open).
-  - "Create group" button → dialog with name input (maxLength 10, validation)
-  - Open → group detail view (below)
-- **Joined**: cards link to read-only group detail
-- **Invites**: pending/accepted/rejected list, Accept / Reject buttons on pending
+While wiring the tests I'll exercise the real components; anything that throws or misbehaves gets a minimal fix in the same PR. Known likely items (verified before edit):
 
-Add **Groups** link to `Navbar.tsx` and **Invites** indicator (badge with pending count).
+- `GroupDetail` invite input: currently no email format guard before calling `searchUsers` — invalid strings hit the network. Fixed in §5.
+- `Groups.tsx` pending badge shows `0` chip even when zero — cosmetic, hide when 0.
+- `ImageDetailModal` group-context download path: ensure `recordGroupDownload` runs before the browser download so a failed audit doesn't silently swallow. Wrap in try/catch, still download on audit failure but toast a warning.
 
-## 4. Group Detail (`src/pages/GroupDetail.tsx`, route `/groups/:id`)
+If additional real breakages surface (e.g. undefined guards on `group.ownerId`), they get listed in the final reply and patched.
 
-Owner view:
-- Header: name (inline rename), delete button
-- Tabs: **Images**, **Members**, **Analytics**
-- **Images**: gallery of group images with filters (search, visibility, sort). Owner can multi-select to **Remove from group**. "Add images" button → opens picker dialog showing the owner's library (paginated, searchable, multi-select) → calls `addImagesToGroup`.
-- **Members**: list with status badges (Pending / Accepted / Rejected), invited date, Remove button. "Invite users" button → dialog with email input + autocomplete via `searchUsers`, supports multiple chips, sends `inviteToGroup`.
-- **Analytics**: summary cards (total downloads, unique users, top images) from `downloads/summary` + paginated audit table from `downloads`.
+## 3. Responsiveness audit (all pages, mobile → desktop)
 
-Member view (joined, not owner):
-- Read-only image grid with download button per image (calls `recordGroupDownload` then opens returned URL)
-- Members tab read-only, no analytics, no add/remove
+Manual sweep via Playwright at 375 / 768 / 1280 widths, screenshots into `/tmp/browser/responsive/`. Pages: Login, Register, Gallery, Upload, Profile, Groups, GroupDetail, ImageDetailModal open state.
 
-## 5. ImageDetailModal
+Fix pattern per page (only where broken):
 
-When opened from a group context, replace owner-only edit/delete controls with a Download button that routes through `recordGroupDownload`.
+- Ensure horizontal scroll never appears (`overflow-x` audit on top-level containers).
+- Sticky action bars in Gallery bulk mode: stack buttons vertically < 640px, keep single row ≥ 640px.
+- GroupDetail Analytics table: wrap in `overflow-x-auto` on mobile.
+- Groups tab triggers: allow wrap on < 400px so the pending badge isn't cut off.
+- Navbar: verify the Groups link + invites badge fit on mobile; collapse into existing mobile menu if one exists, otherwise shrink label.
 
-## 6. README
+Any page that already passes gets no code change — noted in the final reply.
 
-Document bulk actions, share groups, invites, group analytics, and the new routes.
+## 4. Dedicated "My Invites" view
+
+Rather than a new route, promote the existing Invites tab into a first-class experience:
+
+- Add `/invites` route in `App.tsx` that renders `<Groups defaultTab="invites" />` — deep-linkable from the navbar bell/badge and from email-style notifications later.
+- Extend `Groups.tsx` to accept `defaultTab` prop and read `?tab=` from the URL, keeping tab state in sync with the query string (so refresh/back works).
+- Enrich the Invites list rows:
+  - Group name, inviter email (from `invite.inviter?.email` if backend returns it — fallback to "—").
+  - Status pill (existing helper already colors pending / accepted / rejected).
+  - Invited-at + responded-at timestamps (relative, e.g. "2h ago").
+  - For accepted rows: prominent "Open group →" button.
+  - For rejected rows: muted, with a "Hidden" tag.
+  - Client-side filter chips: All / Pending / Accepted / Rejected.
+- Navbar invite badge links to `/invites` directly (currently `/groups`).
+
+No backend contract change; if a field like `inviter` isn't returned it renders the fallback gracefully.
+
+## 5. Stronger email validation + debounced autocomplete
+
+In `src/pages/GroupDetail.tsx` invite input:
+
+- Extract a `useDebouncedValue(value, 300)` hook (new `src/hooks/use-debounced-value.ts`).
+- Validate with a zod schema (`z.string().trim().toLowerCase().email().max(255)`) before firing `searchUsers`; show inline helper text for invalid input and disable the "Invite" button.
+- Cancel in-flight searches on new keystrokes via an `AbortController` passed into `searchUsers` (extend the api wrapper's signature to accept an optional signal — non-breaking).
+- Cap suggestions to 8, keyboard-navigable (↑/↓/Enter/Esc), and dismiss on outside click.
+- Prevent inviting yourself or an already-invited/member email — client-side guard using the group's member list plus current user's email.
 
 ## Technical notes
 
-- New routes wired in `App.tsx` under `RequireAuth`
-- Reuse shadcn `Dialog`, `Checkbox`, `Tabs`, `Badge`, `Command` (autocomplete), `Table`, `AlertDialog`
-- Email-autocomplete debounced 250ms, min 2 chars
-- Group name input enforces 10-char max client-side, lowercase trim
-- All counts driven by API response (no client recompute)
-- Selection state lives in Gallery; cleared on tab change or page change
+- New deps: none. Zod is already installed (used elsewhere for validation). If not, `bun add zod` in the same turn.
+- Tests run with `bunx vitest run` — the harness already picks up `vitest.config.ts`.
+- No changes to `src/integrations/supabase/*` or backend API endpoints.
+- README gets a short "Testing" section pointing at `bunx vitest run` and the covered flows.
 
-## Out of scope (ask if wanted)
+## Out of scope
 
-- Real-time invite notifications (websocket / polling beyond on-page refresh)
-- Reordering of group images
-- Bulk add-to-group from outside Gallery selection mode
+- Real network E2E against the deployed backend (sandbox can't reach it reliably; mocked flows cover the same UI logic).
+- Push/email notifications for new invites.
+- Bulk invite (multi-email paste) — can follow if requested.
+
+Ready to build on approval.
