@@ -10,7 +10,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import UploadPage from "./pages/Upload";
 import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
 import { isAuthenticated } from "@/lib/auth";
 import Groups from "./pages/Groups";
 import GroupDetail from "./pages/GroupDetail";
@@ -77,7 +76,7 @@ const App = () => (
                         </RequireAuth>
                       } />
                       {/* Redirect all unknown paths to Gallery (/) if authed, else Login */}
-                      <Route path="*" element={<NotFound />} />
+                      <Route path="*" element={<RequireAuth><Navigate to="/" replace /></RequireAuth>} />
                     </Routes>
                   </main>
                 </>
