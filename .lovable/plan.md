@@ -1,67 +1,67 @@
+# Groups hardening: responsiveness, invites view, invite validation
 
-# Plan: Bulk Actions + Share Groups + Download Analytics
+Four focused workstreams. All frontend — no backend changes.
 
-Backend already exposes everything needed (bulk privacy/delete, share-groups CRUD, invites accept/reject, group images add/remove, downloads with audit, owner analytics, user search). This is a pure frontend build.
+## 1. Fix breaking UI / functionality
 
-## 1. API Layer (`src/lib/api.ts`)
+While wiring the invite flows I exercise the real components; anything that throws or misbehaves gets a minimal fix in the same PR. Known likely items:
 
-Add typed wrappers for all new endpoints:
-- `bulkUpdatePrivacy(imageIds, isPrivate)` → `POST /image/bulk/privacy`
-- `bulkDeleteImages(imageIds)` → `POST /image/bulk/delete`
-- `searchUsers(email, limit?)` → `GET /user/search`
-- Share groups: `createGroup`, `listMyOwnedGroups`, `listMyJoinedGroups`, `listMyInvites(status?)`, `getGroup(id)`, `inviteToGroup(id, emails[])`, `acceptInvite(memberId)`, `rejectInvite(memberId)`, `getGroupImages(id, filters)`, `addImagesToGroup(id, imageIds[])`, `removeImagesFromGroup(id, imageIds[])`, `recordGroupDownload(id, imageId)`, `getGroupDownloadsSummary(id)`, `listGroupDownloads(id, limit, offset)`, `renameGroup(id, name)`, `deleteGroup(id)`, `removeGroupMember(id, memberId)`
+- `GroupDetail` invite input: currently no email format guard before calling `searchUsers` — invalid strings hit the network. Fixed in §4.
+- `Groups.tsx` pending badge shows `0` chip even when zero — cosmetic, hide when 0.
+- `ImageDetailModal` group-context download path: ensure `recordGroupDownload` runs before the browser download so a failed audit doesn't silently swallow. Wrap in try/catch, still download on audit failure but toast a warning.
 
-## 2. Gallery — Bulk selection (`src/pages/Gallery.tsx`)
+If additional breakages surface (e.g. undefined guards on `group.ownerId`), they get listed in the final reply and patched.
 
-Only in **My Library** tab:
-- "Select" toggle in toolbar → enters selection mode
-- Checkbox overlay on each card; "Select all on page" / "Clear" controls
-- Selection action bar (sticky) with counts: **Make Public**, **Make Private**, **Delete** (confirm dialog), **Add to group…** (opens group picker dialog listing user's owned groups + "Create new group" inline)
-- Refetch after each action; clear selection
+## 2. Responsiveness audit (all pages, mobile → desktop)
 
-## 3. Share Groups page (`src/pages/Groups.tsx`, route `/groups`)
+Manual sweep via Playwright at 375 / 768 / 1280 widths, screenshots into `/tmp/browser/responsive/`. Pages: Login, Register, Gallery, Upload, Profile, Groups, GroupDetail, ImageDetailModal open state.
 
-Tabs: **My Groups (owned)**, **Joined**, **Invites**.
-- **My Groups**: list cards with name, member count, image count, actions (Rename, Delete, Open).
-  - "Create group" button → dialog with name input (maxLength 10, validation)
-  - Open → group detail view (below)
-- **Joined**: cards link to read-only group detail
-- **Invites**: pending/accepted/rejected list, Accept / Reject buttons on pending
+Fix pattern per page (only where broken):
 
-Add **Groups** link to `Navbar.tsx` and **Invites** indicator (badge with pending count).
+- Ensure horizontal scroll never appears (`overflow-x` audit on top-level containers).
+- Sticky action bars in Gallery bulk mode: stack buttons vertically < 640px, keep single row ≥ 640px.
+- GroupDetail Analytics table: wrap in `overflow-x-auto` on mobile.
+- Groups tab triggers: allow wrap on < 400px so the pending badge isn't cut off.
+- Navbar: verify the Groups link + invites badge fit on mobile; collapse into existing mobile menu if one exists, otherwise shrink label.
 
-## 4. Group Detail (`src/pages/GroupDetail.tsx`, route `/groups/:id`)
+Any page that already passes gets no code change — noted in the final reply.
 
-Owner view:
-- Header: name (inline rename), delete button
-- Tabs: **Images**, **Members**, **Analytics**
-- **Images**: gallery of group images with filters (search, visibility, sort). Owner can multi-select to **Remove from group**. "Add images" button → opens picker dialog showing the owner's library (paginated, searchable, multi-select) → calls `addImagesToGroup`.
-- **Members**: list with status badges (Pending / Accepted / Rejected), invited date, Remove button. "Invite users" button → dialog with email input + autocomplete via `searchUsers`, supports multiple chips, sends `inviteToGroup`.
-- **Analytics**: summary cards (total downloads, unique users, top images) from `downloads/summary` + paginated audit table from `downloads`.
+## 3. Dedicated "My Invites" view
 
-Member view (joined, not owner):
-- Read-only image grid with download button per image (calls `recordGroupDownload` then opens returned URL)
-- Members tab read-only, no analytics, no add/remove
+Rather than a new route, promote the existing Invites tab into a first-class experience:
 
-## 5. ImageDetailModal
+- Add `/invites` route in `App.tsx` that renders `<Groups defaultTab="invites" />` — deep-linkable from the navbar bell/badge and from email-style notifications later.
+- Extend `Groups.tsx` to accept `defaultTab` prop and read `?tab=` from the URL, keeping tab state in sync with the query string (so refresh/back works).
+- Enrich the Invites list rows:
+  - Group name, inviter email (from `invite.inviter?.email` if backend returns it — fallback to "—").
+  - Status pill (existing helper already colors pending / accepted / rejected).
+  - Invited-at + responded-at timestamps (relative, e.g. "2h ago").
+  - For accepted rows: prominent "Open group →" button.
+  - For rejected rows: muted, with a "Hidden" tag.
+  - Client-side filter chips: All / Pending / Accepted / Rejected.
+- Navbar invite badge links to `/invites` directly (currently `/groups`).
 
-When opened from a group context, replace owner-only edit/delete controls with a Download button that routes through `recordGroupDownload`.
+No backend contract change; if a field like `inviter` isn't returned it renders the fallback gracefully.
 
-## 6. README
+## 4. Stronger email validation + debounced autocomplete
 
-Document bulk actions, share groups, invites, group analytics, and the new routes.
+In `src/pages/GroupDetail.tsx` invite input:
+
+- Extract a `useDebouncedValue(value, 300)` hook (new `src/hooks/use-debounced-value.ts`).
+- Validate with a zod schema (`z.string().trim().toLowerCase().email().max(255)`) before firing `searchUsers`; show inline helper text for invalid input and disable the "Invite" button.
+- Cancel in-flight searches on new keystrokes via an `AbortController` passed into `searchUsers` (extend the api wrapper's signature to accept an optional signal — non-breaking).
+- Cap suggestions to 8, keyboard-navigable (↑/↓/Enter/Esc), and dismiss on outside click.
+- Prevent inviting yourself or an already-invited/member email — client-side guard using the group's member list plus current user's email.
 
 ## Technical notes
 
-- New routes wired in `App.tsx` under `RequireAuth`
-- Reuse shadcn `Dialog`, `Checkbox`, `Tabs`, `Badge`, `Command` (autocomplete), `Table`, `AlertDialog`
-- Email-autocomplete debounced 250ms, min 2 chars
-- Group name input enforces 10-char max client-side, lowercase trim
-- All counts driven by API response (no client recompute)
-- Selection state lives in Gallery; cleared on tab change or page change
+- New deps: none. Zod is already installed (used elsewhere for validation).
+- No changes to `src/integrations/supabase/*` or backend API endpoints.
+- README updated to mention the new routes and UI behavior; no Testing section is added.
 
-## Out of scope (ask if wanted)
+## Out of scope
 
-- Real-time invite notifications (websocket / polling beyond on-page refresh)
-- Reordering of group images
-- Bulk add-to-group from outside Gallery selection mode
+- Push/email notifications for new invites.
+- Bulk invite (multi-email paste) — can follow if requested.
+
+Ready to build on approval.

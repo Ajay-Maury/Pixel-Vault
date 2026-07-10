@@ -179,8 +179,12 @@ export async function updateProfile(data: {
   return res.data;
 }
 
-export async function searchUsers(email: string, limit: number = 10): Promise<UserLite[]> {
-  const res = await api.get(`/user/search`, { params: { email, limit } });
+export async function searchUsers(
+  email: string,
+  limit: number = 10,
+  signal?: AbortSignal,
+): Promise<UserLite[]> {
+  const res = await api.get(`/user/search`, { params: { email, limit }, signal });
   const data = res.data;
   if (Array.isArray(data)) return data as UserLite[];
   if (Array.isArray(data?.data)) return data.data as UserLite[];
