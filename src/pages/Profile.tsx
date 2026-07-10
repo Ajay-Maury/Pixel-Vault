@@ -448,6 +448,33 @@ export default function Profile() {
           </Link>
         </div>
 
+        {/* Product tour */}
+        <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground text-sm">Product Tour</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Replay the quick walkthrough of Gallery, Upload, Groups & Invites.</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                resetWalkthrough();
+                toast.success("Starting the tour");
+              }}
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+            >
+              <Sparkles className="w-4 h-4" />
+              Restart tour
+            </Button>
+          </div>
+        </section>
+
         {/* Sign Out */}
         <section className="mt-6 rounded-xl border border-destructive/20 bg-card p-5 shadow-card">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
