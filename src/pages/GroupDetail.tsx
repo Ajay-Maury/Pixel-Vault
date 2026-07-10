@@ -25,8 +25,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getUserId } from "@/lib/auth";
 import { toast } from "sonner";
 import ImageDetailModal from "@/components/ImageDetailModal";
-
-const NAME_MAX = 10;
+import { GROUP_NAME_MAX as NAME_MAX, GALLERY_PAGINATION_LIMIT, GROUP_DOWNLOADS_PAGINATION_LIMIT } from "@/lib/constants";
 
 function statusPill(status: string) {
   const cls =
@@ -207,7 +206,7 @@ function ImagesTab({ groupId, isOwner }: { groupId: string; isOwner: boolean }) 
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const LIMIT = 12;
+  const LIMIT = GALLERY_PAGINATION_LIMIT;
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -394,7 +393,7 @@ function AddImagesDialog({ groupId, onClose, onAdded }: { groupId: string; onClo
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
-  const LIMIT = 12;
+  const LIMIT = GALLERY_PAGINATION_LIMIT;
 
   useEffect(() => {
     const t = setTimeout(() => { setDebounced(query); setPage(0); }, 400);
@@ -801,7 +800,7 @@ function AnalyticsTab({ groupId }: { groupId: string }) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const LIMIT = 20;
+  const LIMIT = GROUP_DOWNLOADS_PAGINATION_LIMIT;
 
   useEffect(() => {
     setLoading(true);

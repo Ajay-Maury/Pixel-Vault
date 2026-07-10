@@ -22,7 +22,7 @@ import {
 import { isAuthenticated } from "@/lib/auth";
 import { toast } from "sonner";
 
-const NAME_MAX = 10;
+import { GROUP_NAME_MAX as NAME_MAX } from "@/lib/constants";
 
 type TabKey = "owned" | "joined" | "invites";
 type InviteFilter = "all" | "pending" | "accepted" | "rejected";

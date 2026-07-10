@@ -14,10 +14,7 @@ import { isAuthenticated } from "@/lib/auth";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 
-const MAX_FILES = 30;
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_FILE_SIZE_LABEL = "5MB";
-const UPLOAD_CONCURRENCY = 3;
+import { MAX_FILES, MAX_FILE_SIZE, MAX_FILE_SIZE_LABEL, UPLOAD_CONCURRENCY } from "@/lib/constants";
 
 type UploadStatus = "queued" | "uploading" | "success" | "failed";
 

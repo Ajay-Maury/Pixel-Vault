@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
 import ImageDetailModal from "@/components/ImageDetailModal";
 
-const LIMIT = 12;
+import { GALLERY_PAGINATION_LIMIT as LIMIT } from "@/lib/constants";
 
 function useImageFetch(query: string, page: number, authed: boolean, myLibrary: boolean = false) {
   const [images, setImages] = useState<ImageRecord[]>([]);
