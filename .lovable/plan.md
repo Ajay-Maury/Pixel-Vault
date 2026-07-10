@@ -1,31 +1,18 @@
-# Groups hardening: tests, responsiveness, invites view, invite validation
+# Groups hardening: responsiveness, invites view, invite validation
 
-Five focused workstreams. All frontend + Vitest — no backend changes.
+Four focused workstreams. All frontend — no backend changes.
 
-## 1. End-to-end tests (Vitest + Testing Library, mocked API)
+## 1. Fix breaking UI / functionality
 
-New file: `src/pages/__tests__/groups.e2e.test.tsx`
+While wiring the invite flows I exercise the real components; anything that throws or misbehaves gets a minimal fix in the same PR. Known likely items:
 
-The backend is external and the sandbox can't hit it, so "end-to-end" here means full component flows with `src/lib/api.ts` mocked via `vi.mock`. Covers the request scenarios:
-
-- **Group creation**: open Groups → click "New Group" → type name > 10 chars is clipped → submit → `createGroup` called → toast + list refresh.
-- **Invite by email**: on GroupDetail Members tab → type email → debounced `searchUsers` fires once after typing settles → pick a suggestion → `inviteToGroup` called → pending row appears.
-- **Accept / reject**: Invites tab renders one pending invite from mocked `listMyInvites` → Accept calls `acceptInvite`, moves group into Joined; separate case: Reject calls `rejectInvite`, row hides accept/open button.
-- **Member visibility & download rights**: render GroupDetail as non-owner (mock `me` id ≠ `group.ownerId`) → Members tab is hidden or read-only, Analytics tab hidden, image cards show Download but no edit/delete; opening `ImageDetailModal` in group context calls `recordGroupDownload` on download and doesn't render owner-only controls.
-
-Uses existing `vitest.config.ts` + `src/test/setup.ts`. Adds a small `renderWithRouter` helper inline. Mocks `sonner`'s `toast` to assert calls without DOM.
-
-## 2. Fix breaking UI / functionality found during test authoring
-
-While wiring the tests I'll exercise the real components; anything that throws or misbehaves gets a minimal fix in the same PR. Known likely items (verified before edit):
-
-- `GroupDetail` invite input: currently no email format guard before calling `searchUsers` — invalid strings hit the network. Fixed in §5.
+- `GroupDetail` invite input: currently no email format guard before calling `searchUsers` — invalid strings hit the network. Fixed in §4.
 - `Groups.tsx` pending badge shows `0` chip even when zero — cosmetic, hide when 0.
 - `ImageDetailModal` group-context download path: ensure `recordGroupDownload` runs before the browser download so a failed audit doesn't silently swallow. Wrap in try/catch, still download on audit failure but toast a warning.
 
-If additional real breakages surface (e.g. undefined guards on `group.ownerId`), they get listed in the final reply and patched.
+If additional breakages surface (e.g. undefined guards on `group.ownerId`), they get listed in the final reply and patched.
 
-## 3. Responsiveness audit (all pages, mobile → desktop)
+## 2. Responsiveness audit (all pages, mobile → desktop)
 
 Manual sweep via Playwright at 375 / 768 / 1280 widths, screenshots into `/tmp/browser/responsive/`. Pages: Login, Register, Gallery, Upload, Profile, Groups, GroupDetail, ImageDetailModal open state.
 
@@ -39,7 +26,7 @@ Fix pattern per page (only where broken):
 
 Any page that already passes gets no code change — noted in the final reply.
 
-## 4. Dedicated "My Invites" view
+## 3. Dedicated "My Invites" view
 
 Rather than a new route, promote the existing Invites tab into a first-class experience:
 
@@ -56,7 +43,7 @@ Rather than a new route, promote the existing Invites tab into a first-class exp
 
 No backend contract change; if a field like `inviter` isn't returned it renders the fallback gracefully.
 
-## 5. Stronger email validation + debounced autocomplete
+## 4. Stronger email validation + debounced autocomplete
 
 In `src/pages/GroupDetail.tsx` invite input:
 
@@ -68,14 +55,12 @@ In `src/pages/GroupDetail.tsx` invite input:
 
 ## Technical notes
 
-- New deps: none. Zod is already installed (used elsewhere for validation). If not, `bun add zod` in the same turn.
-- Tests run with `bunx vitest run` — the harness already picks up `vitest.config.ts`.
+- New deps: none. Zod is already installed (used elsewhere for validation).
 - No changes to `src/integrations/supabase/*` or backend API endpoints.
-- README gets a short "Testing" section pointing at `bunx vitest run` and the covered flows.
+- README updated to mention the new routes and UI behavior; no Testing section is added.
 
 ## Out of scope
 
-- Real network E2E against the deployed backend (sandbox can't reach it reliably; mocked flows cover the same UI logic).
 - Push/email notifications for new invites.
 - Bulk invite (multi-email paste) — can follow if requested.
 
