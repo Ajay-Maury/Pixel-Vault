@@ -36,6 +36,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getProfile, searchImages, changePassword, updateProfile, type ProfileRecord } from "@/lib/api";
 import { getToken, removeToken } from "@/lib/auth";
+import { resetWalkthrough } from "@/components/Walkthrough";
+import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 const passwordChangeSchema = z.object({
