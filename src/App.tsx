@@ -45,6 +45,7 @@ const App = () => (
               element={
                 <>
                   <Navbar />
+                  <Walkthrough />
                   <main>
                     <Routes>
                       <Route path="/" element={
