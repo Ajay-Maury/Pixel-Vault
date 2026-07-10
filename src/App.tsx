@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import { isAuthenticated } from "@/lib/auth";
 import Groups from "./pages/Groups";
 import GroupDetail from "./pages/GroupDetail";
+import Walkthrough from "./components/Walkthrough";
 // Wrapper for protected routes
 function RequireAuth({ children }: { children: JSX.Element }) {
   const authed = isAuthenticated();
@@ -43,6 +44,7 @@ const App = () => (
               element={
                 <>
                   <Navbar />
+                  <Walkthrough />
                   <main>
                     <Routes>
                       <Route path="/" element={
