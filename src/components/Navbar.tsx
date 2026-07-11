@@ -44,19 +44,19 @@ export default function Navbar() {
           {/* Center nav */}
           {authed && (
             <nav className="hidden md:flex items-center gap-6">
-              <Link to="/" className={`text-sm transition-colors ${isActive("/")}`}>
+              <Link data-tour="gallery-link" to="/" className={`text-sm transition-colors ${isActive("/")}`}>
                 <span className="flex items-center gap-1.5">
                   <Search className="w-3.5 h-3.5" />
                   Gallery
                 </span>
               </Link>
-              <Link to="/upload" className={`text-sm transition-colors ${isActive("/upload")}`}>
+              <Link data-tour="upload-link" to="/upload" className={`text-sm transition-colors ${isActive("/upload")}`}>
                 <span className="flex items-center gap-1.5">
                   <Upload className="w-3.5 h-3.5" />
                   Upload
                 </span>
               </Link>
-              <Link to="/groups" className={`text-sm transition-colors ${isActive("/groups")}`}>
+              <Link data-tour="groups-link" to="/groups" className={`text-sm transition-colors ${isActive("/groups")}`}>
                 <span className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5" />
                   Groups
@@ -64,6 +64,7 @@ export default function Navbar() {
               </Link>
               {pendingInvites > 0 && (
                 <Link
+                  data-tour="invites-link"
                   to="/invites"
                   className={`text-sm transition-colors ${isActive("/invites")}`}
                   aria-label={`${pendingInvites} pending invites`}
@@ -79,9 +80,11 @@ export default function Navbar() {
             </nav>
           )}
 
+
           {/* Auth buttons */}
           <div className="flex items-center gap-1">
             <Button
+              data-tour="theme-toggle"
               variant="ghost"
               size="sm"
               onClick={toggleTheme}
@@ -92,7 +95,7 @@ export default function Navbar() {
             </Button>
             {authed ? (
               <>
-                <Link to={pendingInvites > 0 ? "/invites" : "/groups"} className="md:hidden relative" aria-label="Groups">
+                <Link data-tour="invites-link-mobile" to={pendingInvites > 0 ? "/invites" : "/groups"} className="md:hidden relative" aria-label="Groups">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Users className="w-4 h-4" />
                     {pendingInvites > 0 && (
@@ -102,12 +105,12 @@ export default function Navbar() {
                     )}
                   </Button>
                 </Link>
-                <Link to="/upload" className="md:hidden">
+                <Link data-tour="upload-link-mobile" to="/upload" className="md:hidden">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Upload className="w-4 h-4" />
                   </Button>
                 </Link>
-                <Link to="/profile">
+                <Link data-tour="account-link" to="/profile">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -118,6 +121,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
               </>
+
             ) : (
               <>
                 <Link to="/login">
