@@ -84,6 +84,7 @@ export default function Navbar() {
           {/* Auth buttons */}
           <div className="flex items-center gap-1">
             <Button
+              data-tour="theme-toggle"
               variant="ghost"
               size="sm"
               onClick={toggleTheme}
@@ -94,7 +95,7 @@ export default function Navbar() {
             </Button>
             {authed ? (
               <>
-                <Link to={pendingInvites > 0 ? "/invites" : "/groups"} className="md:hidden relative" aria-label="Groups">
+                <Link data-tour="invites-link-mobile" to={pendingInvites > 0 ? "/invites" : "/groups"} className="md:hidden relative" aria-label="Groups">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Users className="w-4 h-4" />
                     {pendingInvites > 0 && (
@@ -104,12 +105,12 @@ export default function Navbar() {
                     )}
                   </Button>
                 </Link>
-                <Link to="/upload" className="md:hidden">
+                <Link data-tour="upload-link-mobile" to="/upload" className="md:hidden">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Upload className="w-4 h-4" />
                   </Button>
                 </Link>
-                <Link to="/profile">
+                <Link data-tour="account-link" to="/profile">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -120,6 +121,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
               </>
+
             ) : (
               <>
                 <Link to="/login">
